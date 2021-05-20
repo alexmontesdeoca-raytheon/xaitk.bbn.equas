@@ -1,0 +1,148 @@
+<p-dialog [(visible)]="vqaPlaygroundDialogModel.display" [responsive]="true" [blockScroll]="true" [modal]="true" [style]="{'width': '96%', 'min-height': '95%'}">
+        <p-header>
+            <i class="fas fa-image"></i>
+            VQA Playground - (Faithful Explanation)
+        </p-header>
+        <div *ngIf="vqaPlaygroundDialogModel.display">
+            <jhi-faithful-vqa [isGEpopup]="true" [defaultImage]="vqaPlaygroundDialogModel.defaultImage" [autoAskQuestion]="vqaPlaygroundDialogModel.autoAskQuestion" [autoAskGroundTruth]="vqaPlaygroundDialogModel.autoAskGroundTruth"></jhi-faithful-vqa>
+        </div>
+    </p-dialog>
+
+<div *ngIf="selectedAnnotation">
+    <p-tabView [activeIndex]="tabIndex"  (onChange)="handleChange($event)">
+        <p-tabPanel header="Source Image" leftIcon="fas fa-image">
+            <div style="float: left;">
+                <!-- <a style="height: 800px; width: 1000px; padding:.5em" class="ui-g-12 ui-md-3">
+                                    <img src="/evaluation_dataset/v2_coco/training/images/{{selectedAnnotation.imageName}}" style="height: 100%; width: 100%;" pTooltip="{{selectedAnnotation.imageName}}" tooltipPosition="top">
+                                </a> -->
+                <div [ngStyle]="{ 'background-image': 'url(/evaluation_dataset/v2_coco/training/images/' + selectedAnnotation.imageName + ')', 'background-size' : '850px 800px', 'padding' : '0'}" style="width: 850px; height: 800px; padding:.5em" class="ui-g-12 ui-md-3">
+                    <img [style.visibility]="showSegmentationMask ? 'visible' : 'hidden'" src="/evaluation_dataset/fe_ge_results/seg/{{selectedAnnotation.question_id}}.jpg" style="z-index:1; mix-blend-mode: color; width: 850px; height: 800px;">
+                </div>
+            </div>
+            <div style="display:grid; padding-left: 8px;">
+                <h4>{{selectedAnnotation.question}}?</h4>
+                <span>
+                    Model Answer:
+                    <b style.color="{{ selectedAnnotation.modelAnswer == selectedAnnotation.topAnswer ? 'darkgreen' : 'rgb(204, 118, 7)' }}">{{selectedAnnotation.modelAnswer}}</b>
+                    <p-button icon="fa fa-image" pTooltip="View this image/question/answer in the VQA playground" tooltipPosition="right" (onClick)="vqaPlaygroundDialogModel.displayImage(selectedAnnotation.imageName, selectedAnnotation.question, selectedAnnotation.topAnswer)"></p-button>
+                </span>
+                <span>
+                    Top Turker Answer:
+                    <b>{{selectedAnnotation.topAnswer}}</b>
+                </span>
+                <span>
+                    Explanation:
+                    <span [innerHTML]="selectedAnnotation.explanationHtml | safe">
+                    </span>
+                </span>
+                <p-checkbox [(ngModel)]="showSegmentationMask" label="Show Segmentation Mask" binary="true"></p-checkbox>
+                <br>
+                <!-- All Turker Answers:
+                                <span *ngFor="let answer of selectedAnnotation.answers; index as i; last as isLast">
+                                    Answer: {{i + 1}} :
+                                    <b>{{answer.answer}}</b>
+                                </span> -->
+
+                <div style="margin-top: 16px; width: 400px">
+                    <p-table [value]="selectedAnnotation.topN">
+                        <ng-template pTemplate="header">
+                            <tr>
+                                <th>Top 5 Model Answers</th>
+                                <th>Score</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-item>
+                            <tr>
+                                <td>{{item.answer}}</td>
+                                <td>{{item.score | number}}</td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+
+                <div style="margin-top: 16px; width: 400px">
+                    <p-table [value]="selectedAnnotation.answers">
+                        <ng-template pTemplate="header">
+                            <tr>
+                                <th>Turker Answers  <b>(Consensus: {{selectedAnnotation.consensus}})</b></th>
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-item>
+                            <tr>
+                                <td>{{item.answer}}</td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+
+            </div>
+        </p-tabPanel>
+        <p-tabPanel header="Similar Cases ({{similarCases.length}})" leftIcon="fas fa-images">
+            <ng-container *ngTemplateOutlet="similarCasesTemplate; context: {$implicit: similarCases} "></ng-container>
+        </p-tabPanel>
+        <p-tabPanel header="Rejected Alternatives ({{rejectedAlternatives.length}})" leftIcon="fas fa-copy">
+            <ng-container *ngTemplateOutlet="similarCasesTemplate; context: {$implicit: rejectedAlternatives} "></ng-container>
+        </p-tabPanel>
+    </p-tabView>
+
+    <ng-template #similarCasesTemplate let-tableModel>
+            <p-table #similarCasesTable [value]="tableModel" [autoLayout]="true" [scrollable]="true" [scrollHeight]="'calc(100vh - 325px)'" [style]="{width:'100%'}" [paginator]="true" pageLinks="10" paginatorPosition="top" [rows]="50" [rowsPerPageOptions]="[10, 20, 50, 100, 200]">
+                <ng-template pTemplate="caption">
+                    <div class="ui-g" *ngIf="tableModel">
+                        <div class="ui-g-6 ui-md-12" style="text-align: left">
+                            <!-- <i class="fa fa-search" style="margin:4px 4px 0 0"></i> -->
+                            <!-- <input type="text" [(ngModel)]="similarCasesQuestion" pInputText size="100" placeholder="Whats your question?" (keydown.enter)="bulkSubmit(selectedAnnotation.question)" style="width:30%"> -->
+                            <p-button [disabled]="isSearching" icon="fa fa-search" pTooltip="Search similar images for rejected alternatives" tooltipPosition="right" label="Search for rejected alternatives" (onClick)="bulkSubmit(selectedAnnotation)"></p-button>
+                            <p-button *ngIf="isSearching" icon="fa fa-ban" pTooltip="Pause Search" tooltipPosition="right" label="Pause Search" (onClick)="isSearching=false"></p-button>
+                            <div *ngIf="isSearching" style="margin-top: 10px;">                                                                
+                                    <span *ngIf="tabIndex==1">Searching similar images with the question "{{selectedAnnotation.question}}?"</span>
+                                    <span *ngIf="tabIndex==2">Searching similar images with the question "{{selectedAnnotation.question}}?" where "{{answersOfInterest.join(" & ")}}" are in the top 5 answers.</span>
+                                    <p-progressBar [value]="(bulkProgressCount / similarCases.length) * 100  | number:'1.0-0'"></p-progressBar>    
+                                    <span>{{bulkProgressCount}} of {{similarCases.length}}</span>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </ng-template>
+                <ng-template pTemplate="body" let-vqaBundle>
+                    <tr>
+                        <td>
+                            <img *ngIf="!vqaBundle.answer" src="{{getCocoImageUrl(vqaBundle.img)}}" style="margin-right:8px; width: 100%; height: 300px; object-fit: contain;">
+                            <img *ngIf="vqaBundle.answer" src="/evaluation_dataset/model_results/{{vqaBundle.id}}/faithful_seg.jpg" style="margin-right:8px; width: 100%; height: 300px; object-fit: contain;">
+                        </td>
+                        <td *ngIf="vqaBundle.answer" style="font-weight: bold;">
+                            Image Id: {{vqaBundle.img}}
+                            <div>
+                                <div>Question: {{vqaBundle.question}}</div>
+                                <div>Answer: {{vqaBundle.answer}}</div>
+                                <div>Explanation:
+                                    <span [innerHTML]="vqaBundle.explanationHtml | safe"></span>
+                                    <!-- <span [innerHTML]="vqaBundle.explanation | safe"></span> -->
+                                </div>
+
+                            </div>
+                        </td>
+                        <td *ngIf="vqaBundle.answer">                        
+                            <div style="width: 400px">
+                                <p-table [value]="vqaBundle.topN">
+                                    <ng-template pTemplate="header">
+                                            <tr>
+                                                <th>Top 5 Model Answers</th>
+                                                <th>Score</th>
+                                                <!-- <th>Delta</th> -->
+                                            </tr>
+                                        </ng-template>
+                                        <ng-template pTemplate="body" let-item let-rowIndex="rowIndex">
+                                            <tr [style.font-weight]="getAnswerOfIntrestStyle(item.answer)" >
+                                                <td>{{item.answer}}</td>
+                                                <td>{{item.score | number}}</td>                                                
+                                            </tr>
+                                        </ng-template>
+                                </p-table>
+                            </div>                            
+                        </td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </ng-template>
+</div>

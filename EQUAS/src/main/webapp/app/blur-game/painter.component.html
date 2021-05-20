@@ -1,0 +1,22 @@
+<div style=" border: 2px solid #363636; border-radius: 5px; margin: 2px; font-size: 16px;">
+    <div style="height: 30px;"> 
+        <b>{{demoImage.name}} - Id:{{demoImage.id}}</b>
+        
+        <span style="float: right; padding: 3px;">
+            <span [class]="demoImage.negative ? 'fas fa-times toolbutton' : 'fas fa-check toolbutton'" class="fas plus-circle toolbutton" [style.background-color]="demoImage.negative ? 'orange': '#37f737'" (click)="toggleNegative()" pTooltip="Toggle whether this is a positive or negative example." >
+                <span *ngIf='demoImage.negative' style="font-family:Open Sans, Helvetica Neue, sans-serif">Negative</span>
+                <span *ngIf='!demoImage.negative' style="font-family:Open Sans, Helvetica Neue, sans-serif">Positive</span>            
+            </span>
+            <i class="fas fa-fill-drip toolbutton" *ngIf="imageIndex > 0" (click)="paintWholeImage()" pTooltip="Cover whole image with paint" ></i>
+            <i class="fas fa-eraser toolbutton" (click)="clearHeatMap()" pTooltip="Clear painting for this aircraft" ></i>
+            <i  class="fas fa-undo toolbutton" [style.opacity]="undoStack.length > 1 ? 1: .4" (click)="undo()" pTooltip="Undo the last change" ></i>
+            <i  class="fas fa-redo toolbutton" [style.opacity]="redoStack.length > 0 ? 1: .4" (click)="redo()" pTooltip="Redo the last change" ></i>
+            <i class="fas fa-trash-alt toolbutton" (click)="removeFromAspect()" pTooltip="Remove this aircraft from the aspect"></i>
+            
+        </span>
+        
+    </div>
+    <div id="{{ heatmapId }}" (click)="paintHeatMap($event)"  (mousemove)="paintHeatMapContinuous($event)" (mouseup)="updateHeatmap()" (mouseout)="updateHeatmap()">
+        <img draggable="false" [src]="demoImage.image_path" style="z-index:1; width:475px; height:325px;">
+    </div>
+</div>

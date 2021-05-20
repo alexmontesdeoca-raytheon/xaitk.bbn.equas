@@ -1,0 +1,232 @@
+<p-toast position="center" [baseZIndex]="9999"></p-toast>
+<p-confirmDialog header="Confirmation" [baseZIndex]="9999" icon="pi pi-exclamation-triangle"></p-confirmDialog>
+<p-confirmDialog header="" key="Info" [baseZIndex]="9999" icon="pi pi-exclamation-triangle"></p-confirmDialog>
+<div *ngIf="showProgressSpinner" style="text-align: center;
+            z-index: 10000;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 100%;
+            background-color: #949494d1;">
+    <p-progressSpinner></p-progressSpinner>
+    <div style="font-size: xx-large;">{{progressSpinnerMessage}}</div>
+</div>
+
+
+<p-sidebar [(visible)]="showSaveHistory" [baseZIndex]="9999" [style]="{width: '500px'}">
+    <div>
+        <h4><i class="fas fa-folder-open"></i> Open</h4>
+        <h4>You have several options for opening an exisiting one shot detector.</h4>
+        <h5>A) Open from your most recent saves. Click one to open.</h5>
+        <div *ngIf="saveHistory.length > 0" style="white-space: nowrap; height: 200px; overflow: auto; border: 2px solid #363636; border-radius: 5px;">
+            <div *ngFor="let save of saveHistory; let i = index" style="cursor: pointer;" (click)="promptOpenSave(save)">
+                <a>{{save.timestamp | date:'short'}} - {{save.name}}</a> 
+            </div>
+        </div>
+        <span *ngIf="saveHistory.length===0">-It appears you don't have any saves yet.-</span>
+
+        <div>
+            <br>
+            <h5>B) Open from a list of shared/example detectors. Click one to open.</h5>        
+            <div *ngIf="examples.length > 0" style="white-space: nowrap; height: 200px; overflow: auto; border: 2px solid #363636; border-radius: 5px;">
+            <div *ngFor="let save of examples; let i = index" style="cursor: pointer;" (click)="promptOpenSave(save)">
+                <a>{{save.name}}</a> 
+            </div>
+        </div>
+        </div>
+
+        <div>
+            <br>
+            <h5>C) Import from file.</h5>        
+            <p-fileUpload #importControl mode="basic" auto="true" pTooltip="Import Aspects"  chooseLabel="Import From File" name="myfile[]" customUpload="true" (uploadHandler)="importAspects($event, importControl)" [style]="{'vertical-align': 'bottom'}" style="margin-right: 5px"></p-fileUpload>
+        </div>
+
+        
+    </div>
+    <!-- <button pButton type="button" (click)="showSaveHistory = false" label="Save" class="ui-button-success"></button>
+    <button pButton type="button" (click)="showSaveHistory = false" label="Cancel" class="ui-button-secondary"></button> -->
+</p-sidebar>
+
+<p-dialog [(visible)]="aspect.display" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="false" [style]="{'z-index' : '995', width: '1150px'}">
+    <p-header>
+        <i class="fas fa-info-circle"></i>   
+        <span *ngIf="aspect.all.length === 0">
+            Select An Aircraft
+        </span>
+        <span *ngIf="aspect.all.length !== 0">
+            Create A New Aspect
+        </span>     
+    </p-header>
+    <h4>
+        <div *ngIf="aspect.all.length === 0">
+            To start building a new one shot detector, choose one of the default aircraft classes below or search for a specific aircraft class <input placeholder="Enter an aircraft class" id="txtSearch" type="text" maxlength="40" (input)="recover_images_by_class($event.target.value)" pInputText > then click OK.
+            <br>
+            <b>or</b> 
+            <br>
+            To continue working on an existing one shot detector click this button <p-button label="Open" icon="fas fa-folder-open" (onClick)="getMySaves();" style="margin-right: 5px"></p-button>             
+        </div>
+        <div *ngIf="aspect.all.length !== 0">
+            Create a new aspect for a type of aircraft areas to which you want the one shot detector to pay closer attention.
+        </div>
+    </h4>
+    <div style="font-size:16px;">
+        <div *ngIf="aspect.all.length !== 0">
+            Name your aspect: <input id="txtAspect" type="text" maxlength="40" pInputText [(ngModel)]="aspect.newAspect.name">
+            <br>
+            <br>
+        </div>        
+        
+        <div *ngIf="aspect.all.length === 0" style="overflow: auto; height: 500px;">
+            <div *ngFor="let item of aspect.initalImages; let i = index" style="float: left; cursor: pointer;" (click)="aspect.makeDefault(item)">
+                <div  *ngIf="item.include" [style.background-color]="item.in_aspect ? '#8dcdff' : ''" [style.border-color]="item.in_aspect ? '#007ad9' : '#363636'" style="border: 2px solid #363636; border-radius: 5px; margin: 2px;">
+                    <div>
+                        <b>{{item.name}}</b>
+                        <!-- <span style="float: right; padding: 3px;">
+                            <i class="fas fa-paint-brush toolbutton" (click)=addToAspect(item)></i>
+                        </span>                                         -->
+                    </div>
+                    <img style="cursor: pointer;" [src]="item.image_path" style="width: 200px; height: 150px;" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <p-footer>
+        <div style="text-align: center;">
+            <button type="button" [disabled]="aspect.newAspect.images.length === 0 || aspect.newAspect.name === ''" pButton icon="pi pi-check" (click)="aspect.accept(); demoResponse=[]" label="OK"></button>
+            <button *ngIf="aspect.all.length > 0" type="button" pButton icon="fas fa-ban" (click)="aspect.cancel()" label="Cancel"></button>
+        </div>
+    </p-footer>
+</p-dialog>
+
+
+<p-dialog [(visible)]="aspect.rename" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="false" [style]="{'z-index' : '995', width: '600px'}">
+    <p-header>
+        <i class="fas fa-edit"></i>   
+        Re-name Aspect
+    </p-header>
+    <div style="font-size:16px;">
+        <div>
+            Re-name your aspect: <input id="txtAspect" type="text" maxlength="40" pInputText [(ngModel)]="aspect.selected.name">
+        </div>        
+    </div>
+    <p-footer>
+        <div style="text-align: center;">
+            <button type="button" [disabled]="aspect.selected.name === ''" pButton icon="pi pi-check" (click)="aspect.rename = false;" label="OK"></button>
+            <!-- <button *ngIf="aspect.all.length > 0" type="button" pButton icon="fas fa-ban" (click)="aspect.rename = false;" label="Cancel"></button> -->
+        </div>
+    </p-footer>
+</p-dialog>
+
+<p-dialog [(visible)]="recallChart.display" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="true" [style]="{'z-index' : '995', height: '800px', width: '1100px'}">
+    <p-header>        
+        <i class="fas fa-chart-line"></i>
+        {{recallChart.options.title.text}}
+    </p-header>
+    <div *ngIf="recallChart.display">
+        <div style="width: 1000px">
+            <p-chart  width="1050px" height="650px"  type="line" [data]="recallChart.data" [options]="recallChart.options"></p-chart>
+        </div>
+    </div>
+    <p-footer>
+        <div style="text-align: center;">
+            <button type="button" pButton icon="pi pi-check" (click)="recallChart.display=false;" label="OK"></button>
+        </div>
+    </p-footer>
+</p-dialog>
+
+<div *ngIf="loadComplete">
+    <div style="display: flex;">
+        <div style="flex: 0 0 340px; ">
+            <p-panel>
+                <p-header>
+                    <form id="maxResultForm">
+                        <i class="fa fa-fw fa-images" style="font-size: 24px;"></i> 
+                        <span>Max results: <input type="number" name="maxResults" [size]="3" pInputText [(ngModel)]="maxResults" [min]="5" [max]="80" maxlength="2" required></span>
+                        <p-button [disabled]="demoResponse.length===0" icon="fas fa-fw fa-sync" (onClick)="class_features_demo();" label="" pTooltip="Refresh candidate aircraft"></p-button>
+                        <p-progressSpinner *ngIf="autoUpdateSpinner" [style]="{width: '22px', height: '22px'}" strokeWidth="8" fill="#EEEEEE" animationDuration=".5s"></p-progressSpinner>
+                    </form>
+                </p-header>
+                <div style="max-height: 85vh; overflow: auto; margin-left: -8px; margin-right:-8px;">
+                    <div *ngIf="demoResponse.length===0">
+                        <h4>                            
+                            Highlight the parts of the aircraft to which the one shot detector should pay closer attention for this aspect.
+                        </h4>
+                    </div>
+                    <div style="font-size:16px;">
+                        <div id="listOfCanidates"></div>
+                        <div *ngFor="let item of demoResponse; let i = index" style="float: left;" [pTooltip]="item.in_aspect ? 'This aircraft (' + item.name + '  Id:' + item.id + ') has already been added to the aspect' : 'Click to add this aircraft (' + item.name + '  Id:' + item.id + ') to the aspect'">
+                            <div [style.opacity]="item.in_aspect ? .5 : 1" [style.pointer-events]="item.in_aspect ? 'none' : 'auto' " style="border: 2px solid #363636; border-radius: 5px; margin: 2px;">
+                                <div>
+                                    <div style="width:130px; font-weight: bold; overflow: hidden; white-space:nowrap; text-overflow:ellipsis;">#{{i + 1}} - Id:{{item.id}}</div>
+                                    <div style="width:130px; font-weight: bold; overflow: hidden; white-space:nowrap; text-overflow:ellipsis;">{{item.name}}</div>
+                                </div>
+
+                                <img style="cursor: pointer; width:145px; height:130px;" [src]="'data:image/jpg;base64,' + item.b64_image" (click)=addToAspect(item) />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </p-panel>
+        </div>
+        <div style="margin-left: 8px; width: 100%">
+            <p-tabMenu #tabMenu [model]="aspect.all"  [activeItem]="aspect.selected" (click)="itemClick(tabMenu)" >
+                <ng-template pTemplate="item" let-item let-i="index"   >
+                    <div [style.color]="aspect.selected === item ? 'white': 'black'" >
+                        <!-- <i class="far fa-image"></i> -->
+                        <p-checkbox name="shared" [ngModel]="!item.excluded" (onChange)='item.excluded=!item.excluded; ' [binary]="true" pTooltip="Enable/Disable this aspect during scoring"></p-checkbox>                        
+                        <span [class]="item.excluded ? 'strike' : ''" [pTooltip]="item.excluded ? 'This aspect is disabled and will not be used during scoring' : ''" >{{item.name}}</span>
+                    </div>                    
+                </ng-template>
+            </p-tabMenu>
+            <p-panel>
+                <p-header>
+                    <div style="display: flex;">
+                        <!-- <i class="far fa-image"></i> -->
+                        <!-- {{currentAnnotation.question_id}} -->
+
+                        <!-- <b style="font-size:20px; margin-right: 10px;">Aspect: </b>
+                        <select [(ngModel)]="aspect.selected" (change)="class_features_demo()" style="font-size:20px; font-weight: bold; margin-right: 10px">
+                            <option *ngFor="let asp of aspect.all; let i = index" [ngValue]="asp">{{asp.name}}</option>
+                        </select> -->
+                        
+                        <p-button icon="fas fa-fw fa-plus" (onClick)="aspect.open();" label="New" pTooltip="Create a new aspect" style="margin-right: 10px"></p-button>
+                        <p-button icon="fas fa-fw fa-edit" (onClick)="aspect.rename = true; aspect.selectAspectText()" label="Re-name" pTooltip="Give this aspect a different name" style="margin-right: 10px"></p-button>
+                        <p-button icon="fas fa-trash-alt" [disabled]="aspect.all.length <= 1" (onClick)="aspect.deleteAspect(aspect.selected, confirmationService);" label="Delete" pTooltip="Delete this aspect"></p-button>
+                        
+                        
+                        <!-- <p-button  icon="fas fa-fw fa-broom"  (onClick)="initHeatmap();" label="Reset"></p-button> -->
+                        <!-- <p-button  icon="fas fa-fw fa-download"  (onClick)="saveHeatmap();" label="Save" pTooltip="Save/Download Heatmap"></p-button> -->
+
+                        <!-- <p-button  icon="fas fa-fw fa-cloud-upload-alt"  (onClick)="class_features_demo_resize();" label="Resize/Upload" pTooltip="Upload Heatmap"></p-button> -->
+                        <!-- <p-button  icon="fas fa-fw fa-cloud-upload-alt"  (onClick)="demoTest2();" label="DT2" pTooltip="Upload Heatmap"></p-button>
+                        <p-button  icon="fas fa-fw fa-cloud-upload-alt"  (onClick)="class_features_demo();" label="CFD" pTooltip="Upload Heatmap"></p-button> -->
+
+                        <div style="width:150px; text-align: center; margin-left: 50px;">
+                            <div [style.background]="brushColor" style="border-radius: 50%; position: absolute;" [style.width.px]="brushRadius*2" [style.height.px]="brushRadius*2" [style.margin-left.px]="-brushRadius*2"></div>
+                            <span><i class="fas fa-paint-brush"></i> Brush Size: {{brushRadius}}</span>
+                            <p-slider [(ngModel)]="brushRadius" [min]="2" [max]="15"></p-slider>
+                        </div>
+
+                        <div style="position:absolute; right: 15px;" >
+                            <p-button label="Score" icon="fas fa-chart-line" (onClick)="calcScore(false);" style="margin-right: 5px"></p-button>       
+                            <!-- <p-fileUpload mode="basic" name="demo[]" url="./upload.php" accept="image/*" maxFileSize="1000000" (onUpload)="onBasicUpload($event)"></p-fileUpload> -->
+                            
+                            <p-button label="Open" icon="fas fa-folder-open" (onClick)="getMySaves();" style="margin-right: 5px"></p-button> 
+                            <p-splitButton label="Save" icon="fas fa-save" (onClick)="saveDemoState();" [model]="exportMenuItems" ></p-splitButton> 
+                            <!-- <p-button icon="fas fa-chart-line" (onClick)="calcScore(false);" label="Score" pTooltip="Calculate score from annotations"></p-button>
+                            <p-button icon="fas fa-chart-line" (onClick)="calcScoreTest(false);" label="Score Test" pTooltip="Calculate score from annotations"></p-button> -->
+                        </div>                        
+
+                    </div>
+
+                </p-header>
+                <div *ngFor="let a of aspect.all;" [hidden]="aspect.selected !== a" style="display: flex; flex-wrap: wrap;">
+                    <div *ngFor="let image of a.images; let i = index">
+                        <jhi-painter [demoImage]="image" [imageIndex]="i" [brushRadius]="brushRadius" [brushColor]="brushColor" (maskUpdated)="refreshCandidates()" (remove)="removeFromAspect(image)"></jhi-painter>
+                    </div>
+                </div>
+            </p-panel>
+        </div>
+    </div>
+</div>

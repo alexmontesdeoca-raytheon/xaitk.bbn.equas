@@ -1,0 +1,770 @@
+<div *ngIf="!isAuthenticated()" style="padding: 16px;">
+    <!-- <div class="col-md-3">
+        <span class="hipster img-fluid rounded"></span>
+    </div> -->
+    <div class="col-md-9">
+        <!-- <h1 class="display-4" jhiTranslate="home.title">Welcome, Java Hipster!</h1> -->
+        <h1 class="display-4">Explainable QUestion Answering System (EQUAS)</h1>
+        <!-- <p class="lead" jhiTranslate="home.subtitle">This is your homepage</p> -->
+
+        <div [ngSwitch]="isAuthenticated()">
+            <div class="alert alert-success" *ngSwitchCase="true">
+                <span *ngIf="account" jhiTranslate="home.logged.message" translateValues="{username: '{{account.login}}'}"> You are logged in as user "{{account.login}}". </span>
+            </div>
+
+            <div class="alert alert-warning" *ngSwitchCase="false">
+                <!-- <span jhiTranslate="global.messages.info.authenticated.prefix">If you want to </span> -->
+                <span>If you already have account, click here to </span>
+                <a class="alert-link" (click)="login()" jhiTranslate="global.messages.info.authenticated.link">sign in</a>
+            </div>
+            <div class="alert alert-warning" *ngSwitchCase="false">
+                <span jhiTranslate="global.messages.info.register.noaccount">You don't have an account yet?</span>
+                <a class="alert-link" routerLink="register" jhiTranslate="global.messages.info.register.link">Register a new account</a>
+            </div>
+        </div>
+    </div>
+</div>
+<p-toast position="center"></p-toast>
+
+<div *ngIf="isAuthenticated() && loadComplete">
+    <p-button icon="fas fa-filter" pTooltip="Show Filters" tooltipPosition="left" (click)="op1.toggle($event)" style="position: fixed; right: 15px; margin-top: 5px;"></p-button>
+    <p-tabView>
+        <p-tabPanel header="Questions/Images" leftIcon="far fa-images">
+            <p-dataView #annotationDataView [value]="filteredAnnotations" [paginator]="true" pageLinks="10" paginatorPosition="both" [rows]="10" [rowsPerPageOptions]="[10, 20, 30, 50, 100, 200, 300]" paginatorPosition="both" layout="list" filterBy="{{annotationDialogModel.selectedFilter}}">
+                <p-header>
+                    <div class="ui-helper-clearfix">
+                        <div class="ui-g">
+                            <div class="ui-g-12 ui-md-10">
+                                <i class="fa fa-search" style="margin:4px 4px 0 0"></i>
+                                Filter by
+                                <p-dropdown [(ngModel)]="annotationDialogModel.selectedFilter" [options]="annotationDialogModel.filterOptions" (onChange)="annotationDataView.filter(annotationDialogModel.filterText); annotationDataView.first=0"></p-dropdown>
+                                <!-- <p-dropdown [options]="annotationDialogModel.matchModeOptions" [(ngModel)]="annotationDialogModel.answerFilterMatchMode"></p-dropdown> -->
+                                <input type="search" pInputText placeholder="" [(ngModel)]="annotationDialogModel.filterText" (input)="annotationDataView.filter($event.target.value); annotationDataView.first=0">
+                                <span style="margin-right: 8px;">{{annotationDataView.totalRecords}} of {{filteredAnnotations.length}}</span>
+                                <br>
+                                <i class="fas fa-sort-amount-up" style="margin:4px 4px 0 0"></i><span style="margin-right:9px;">Sort by</span>
+                                <p-dropdown [options]="sortOptions" [(ngModel)]="selectedSortOption" (onChange)="sortChanged($event)"></p-dropdown>
+                                <p-checkbox [(ngModel)]="showSegmentationMask" label="Show Segmentation Mask" binary="true"></p-checkbox>
+                                   
+                                <p-checkbox [(ngModel)]="showIncluded" label="Show Included" binary="true" (onChange)="filterIncluded(); annotationDataView.first=0"></p-checkbox>
+                                <p-checkbox [(ngModel)]="showExcluded" label="Show Excluded" binary="true" (onChange)="filterIncluded(); annotationDataView.first=0"></p-checkbox>
+                                <br>
+                                <p-checkbox [(ngModel)]="showModelCorrect" label="Show Model Correct" binary="true" (onChange)="filterIncluded(); annotationDataView.first=0"></p-checkbox>
+                                <p-checkbox [(ngModel)]="showModelWrong" label="Show Model Wrong" binary="true" (onChange)="filterIncluded(); annotationDataView.first=0"></p-checkbox>
+                                
+                                <p-button icon="fas fa-cloud-download-alt" pTooltip="Download latest blur game results and reset filter" tooltipPosition="left" (onClick)="loadBlurGameResults()"></p-button>
+                            </div>
+                            <div class="ui-g-6 ui-md-2" style="text-align:right">
+                                <p-dataViewLayoutOptions></p-dataViewLayoutOptions>
+                            </div>
+                        </div>
+                    </div>
+                </p-header>
+
+                <ng-template let-annotation pTemplate="gridItem">
+                    <div style="width: 280px; padding:.5em; border: 1px solid #d9d9d9;" class="ui-g-12 ui-md-2">
+                        <a> 
+                            <!-- <img src="/evaluation_dataset/v2_coco/training/images/{{annotation.imageName}}" (click)="annotationDialogModel.selectAnnotation(annotation)" style="height: 220px; width: 100%;" pTooltip="{{annotation.imageName}}" tooltipPosition="top">
+                                <img src="/evaluation_dataset/fe_ge_results/seg/{{annotation.question_id}}.jpg" (click)="annotationDialogModel.selectAnnotation(annotation)" style="height: 220px; width: 100%;" pTooltip="{{annotation.imageName}}" tooltipPosition="top"> -->
+                            <div [ngStyle]="{ 'background-image': 'url(/evaluation_dataset/v2_coco/training/images/' + annotation.imageName + ')', 'background-size' : '100% 220px'}" (click)="annotationDialogModel.selectAnnotation(annotation)" pTooltip="{{annotation.imageName}}" tooltipPosition="top">
+                                <!-- <img [style.visibility]="showSegmentationMask ? 'visible' : 'hidden'" src="/evaluation_dataset/fe_ge_results/seg/{{annotation.question_id}}.jpg" style="z-index:1; mix-blend-mode: color; width: 100%; height: 220px;"> -->
+                                <img [style.visibility]="showSegmentationMask ? 'visible' : 'hidden'" src="/evaluation_dataset/component_explanations/no_fill/{{annotation.question_id}}.png" style="z-index:1; mix-blend-mode: color; width: 100%; height: 220px;">
+                            </div>
+                            <div>
+                                <p-button icon="fa fa-fw fa-thumbs-up" pTooltip="Include this image in the blur game experiment" [styleClass]="!isExcluded(annotation.question_id) ? 'ui-button-success' : 'ui-button-secondary'" tooltipPosition="left" (onClick)="includeQuestionId(annotation.question_id)"></p-button>
+                                <p-button icon="fa fa-fw fa-thumbs-down" pTooltip="Exclude this image from the blur game experiment" [styleClass]="isExcluded(annotation.question_id) ? 'ui-button-danger' : 'ui-button-secondary'" tooltipPosition="left" (onClick)="excludeQuestionId(annotation.question_id)"></p-button>
+                            </div>
+                            <span>
+                                {{annotation.question}}?
+                            </span>
+                            <br>
+                            <span>
+                                Model Answer:
+                                <b style.color="{{ annotation.modelAnswer == annotation.topAnswer ? 'darkgreen' : 'rgb(204, 118, 7)' }}">{{annotation.modelAnswer}}</b>
+                                <!-- <p-button icon="fa fa-image" pTooltip="View this image/question/answer in the VQA playground" tooltipPosition="right" (onClick)="vqaPlaygroundDialogModel.displayImage(annotation.imageName, annotation.question, annotation.topAnswer)"></p-button>                             -->
+                            </span>
+                            <br>
+                            <span>
+                                Top Turker Answer:
+                                <b>{{annotation.topAnswer}}</b>
+                            </span>
+                            <br>
+                            <span [innerHTML]="annotation.explanationHtml | safe">
+                            </span>
+                        </a>
+                        <br>
+                        <span>Id: {{annotation.question_id}}</span>
+                    </div>
+                </ng-template>
+                <ng-template let-annotation pTemplate="listItem">
+                    <ng-container *ngTemplateOutlet="questionDetails; context: {$implicit: annotation} "></ng-container>
+                </ng-template>
+            </p-dataView>
+        </p-tabPanel>
+        <p-tabPanel header="Dataset Selection" leftIcon="fas fa-database">
+            <div class="ui-g ui-fluid">
+                    <div class="ui-g-12">
+                        <div class="ui-g-3">
+                            <div *ngIf="blurGameParams">
+                                <div class="form-group">
+                                    <p-message severity="warn" text="Be careful making any changes on this page as it could drastically alter the dataset for the experiment."></p-message>
+                                    <br>
+                                    <!-- <button type="button" [disabled]="hasFilterChanged()" pButton icon="fas fa-filter" iconPos="left" label="Apply Filter" (click)="applyFilterAndTransition()" pTooltip="" tooltipPosition="left"></button>
+                                    <button type="button" [disabled]="isDefaultFilter()" pButton icon="fas fa-ban" iconPos="left" label="Clear Filter" (click)="clearFilterAndTransition()" pTooltip="Remove all filters and show the full dataset" tooltipPosition="left"></button> -->
+                                    <p-button icon="fa fa-fw fa-save" pTooltip="Save" tooltipPosition="left" label="Save & Refresh" (onClick)="saveParamsAndRefresh()"></p-button>
+                                </div>
+                                <div class="form-group" pTooltip="Only include questions where at least {{blurGameParams.datasetFilter.minTurkerConsensus | percent}} of Turkers agreed on the ground truth"><p-spinner [(ngModel)]="blurGameParams.datasetFilter.minTurkerConsensus" [min]="0" [max]="1" [step]=".1" [size]="4"  [style]="{'vertical-align': 'middle'}"></p-spinner>Min Turker Consensus</div>
+                                <div class="form-group" pTooltip="Limit the results to a subset of questions" ><p-spinner [(ngModel)]="blurGameParams.datasetFilter.maxQuestions" [min]="0" [max]="999999" [formatInput]="true" thosandSeparator="," decimalSeparator="." [size]="4"></p-spinner>Max # of Questions</div>
+                                <div class="form-group" pTooltip="Shuffle seed is used to randomize the order of the results in a deterministic manner."><p-spinner [(ngModel)]="blurGameParams.datasetFilter.shuffleSeed" [min]="0" [max]="999" [size]="4"></p-spinner>Shuffle Seed</div>
+                                <div class="form-group" pTooltip="Include/Exclude questions where the VQA answered correctly"><p-inputSwitch [(ngModel)]="blurGameParams.datasetFilter.vqaRight" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Is VQA Correct</div>
+                                <div class="form-group" pTooltip="Include/Exclude questions where the VQA answered incorrectly"><p-inputSwitch [(ngModel)]="blurGameParams.datasetFilter.vqaWrong" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Is VQA Wrong</div>
+                                <div class="form-group" pTooltip="Allow/Disallow multiple questions per image"><p-inputSwitch [(ngModel)]="blurGameParams.datasetFilter.allowDuplicateImages" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Duplicate Images</div>                        
+                                <div class="form-group" pTooltip="Allow/Disallow duplicate questions"><p-inputSwitch [(ngModel)]="blurGameParams.datasetFilter.allowDuplicateQuestions" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Duplicate Questions</div> 
+                                <div class="form-group" pTooltip="Include/Exclude Binary questions "><p-inputSwitch [(ngModel)]="blurGameParams.datasetFilter.allowBinary" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Binary Questions</div>
+                                <div class="form-group" pTooltip="Include/Exclude OCR questions "><p-inputSwitch [(ngModel)]="blurGameParams.datasetFilter.allowOcr" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow OCR Questions</div>
+                                <div class="form-group"><b>The following apply to Turker answers only</b></div>
+                                
+                                <div class="form-group" pTooltip="Allow/Disallow duplicate answers"><p-inputSwitch [(ngModel)]="blurGameParams.datasetFilter.allowDuplicateAnswers" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Duplicate Answers</div>                        
+                                <div class="form-group" pTooltip="Include/Exclude questions that have Yes/No answers"><p-inputSwitch [(ngModel)]="blurGameParams.datasetFilter.allowYesNo" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Yes/No Answers</div>                        
+                                <div class="form-group" pTooltip="Include/Exclude questions that have Numeric answers"><p-inputSwitch [(ngModel)]="blurGameParams.datasetFilter.allowNumeric" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Numeric Answers</div>                        
+                                <div class="form-group" pTooltip="Include/Exclude questions that have answers in the plural form. e.g. apples/apple"><p-inputSwitch [(ngModel)]="blurGameParams.datasetFilter.allowPluralForms" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Plural Form Answers</div>                
+                            </div>
+                        </div>
+                    <div class="ui-g-3">
+    
+                    </div>
+                </div>
+            </div>
+           
+        </p-tabPanel>
+        <p-tabPanel header="Experiment Settings" leftIcon="fas fa-flask">
+            <div class="ui-g ui-fluid">
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        <p-button icon="fa fa-fw fa-save" pTooltip="Save" tooltipPosition="left" label="Save" (onClick)="saveParams()"></p-button>
+                    </div>
+                    <div class="ui-g-3">
+
+                    </div>
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        Starting blur level:
+                    </div>
+                    <div class="ui-g-3">
+                        <p-spinner [(ngModel)]="blurGameParams.blurMax" [min]="1" [max]="99" [size]="3"></p-spinner>
+                    </div>
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        De-blur step factor:
+                    </div>
+                    <div class="ui-g-3">
+                        <p-spinner [(ngModel)]="blurGameParams.blurStep" [min]="0.01" [max]="2" [step]="0.01" [size]="3"></p-spinner>
+                    </div>
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        Blur Modifier:
+                    </div>
+                    <div class="ui-g-3">
+                        <p-spinner [(ngModel)]="blurGameParams.blurModifier" [min]="-10" [max]="20" [step]="1" [size]="3" pTooltip="Increase/decrease blur level for all images by specified amount. Only applies to the 4 modalities."></p-spinner>
+                    </div>
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        Blur Limit:
+                    </div>
+                    <div class="ui-g-3">
+                        <p-spinner [(ngModel)]="blurGameParams.blurLimit" [min]="0" [max]="90" [step]="1" [size]="3" pTooltip="Proceed the user to the next question after they hit this blur amount limit"></p-spinner>
+                    </div>
+                </div>                
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        Questions per HIT reward:
+                    </div>
+                    <div class="ui-g-3">
+                        <p-spinner [(ngModel)]="blurGameParams.questionsPerHit" [min]="1" [max]="9999" [size]="3" pTooltip="The number of questions a Turker must answer to get a reward."></p-spinner>
+                    </div>
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        Max Question per Worker:
+                    </div>
+                    <div class="ui-g-3">
+                        <p-spinner [(ngModel)]="blurGameParams.maxQuestionsPerWorker" [min]="1" [max]="9999" [size]="3" pTooltip="The total number of questions a Turker is allowed to answer."></p-spinner>
+                    </div>
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        Bonus pay per correct question/trial ($):
+                    </div>
+                    <div class="ui-g-3">
+                        <p-spinner [(ngModel)]="blurGameParams.bonusPay" [min]="0.001" [max]="2" [step]="0.001" [size]="3" pTooltip="Bonus pay per correct question/trial ($)"></p-spinner>
+                    </div>
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        Max bonus payout total ($):
+                    </div>
+                    <div class="ui-g-3">
+                        <p-spinner [(ngModel)]="blurGameParams.maxBonusPayout" [min]="0.001" [max]="2" [step]="0.001" [size]="6" pTooltip="Max bonus payout total ($)"></p-spinner>
+                    </div>
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        Allow Turker to leave feedback:
+                    </div>
+                    <div class="ui-g-3">
+                        <p-inputSwitch [(ngModel)]="blurGameParams.allowFeedback"></p-inputSwitch>
+                    </div>
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        Save correct blur levels
+                    </div>
+                    <div class="ui-g-3">
+                            <p-button icon="fas fa-save" label="Median FIRST Correct Guess" pTooltip="Save blur levels based on the (Median FIRST Correct Guess Blur Level)" tooltipPosition="left" (click)="saveBlurLevels(true, true)"></p-button>                                       
+                            <p-button icon="fas fa-save" label="Median FINAL Correct Guess" pTooltip="Save blur levels based on the (Median FINAL Correct Guess Blur Level)" tooltipPosition="left" (click)="saveBlurLevels(false, true)"></p-button>
+                    </div>
+                    <div class="ui-g-3">         
+                        <p-button icon="fas fa-save" label="Average FIRST Correct Guess" pTooltip="Save blur levels based on the (Average FIRST Correct Guess Blur Level)" tooltipPosition="left" (click)="saveBlurLevels(true, false)"></p-button>                                       
+                        <p-button icon="fas fa-save" label="Average FINAL Correct Guess" pTooltip="Save blur levels based on the (Average FINAL Correct Guess Blur Level)" tooltipPosition="left" (click)="saveBlurLevels(false, false)"></p-button>
+                    </div>
+                </div>               
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        Excluded Answers:
+                    </div>
+                    <div class="ui-g-3" style="white-space: nowrap;">                        
+                        <p-autoComplete placeholder="Filter Answer Options" hideTransitionOptions="0ms ease-in" [(ngModel)]="selectedAnswer" [suggestions]="filteredAnswers" [autoHighlight]="true" (completeMethod)="filterAnswers($event)" [delay]="50" [forceSelection]="true"  [minLength]="1" [inputStyle]="{'width':'100%'}" [style]="{'width':'100%'}"></p-autoComplete> 
+                        <p-button [disabled]="!selectedAnswer" icon="fa fa-fw fa-plus" pTooltip="Add this answer to the excluded answers" tooltipPosition="left" label="Exclude" (onClick)="blurGameParams.excludedAnswerOptions.push(selectedAnswer)"></p-button>
+                    </div>
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+
+                    </div>
+                    <div class="ui-g-6">
+                        <div>
+                            <div *ngFor="let answer of blurGameParams.excludedAnswerOptions; index as i;">
+                                <p-button [disabled]="selectedAnswerToRemove" icon="fa fa-fw fa-trash-alt" pTooltip="Remove from excluded answers" tooltipPosition="left"  (onClick)="blurGameParams.excludedAnswerOptions.splice(i, 1)"></p-button>  {{answer}}
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="ui-g-12">
+                    <div class="ui-g-3">
+                        <p-button icon="fa fa-fw fa-save" pTooltip="Save" tooltipPosition="left" label="Save" (onClick)="saveParams()"></p-button>
+                    </div>
+                    <div class="ui-g-3">
+
+                    </div>
+                </div>
+            </div>
+        </p-tabPanel>        
+        <p-tabPanel [disabled]="!blurGameStats" header="Game / Worker Stats" leftIcon="fas fa-chart-pie">
+            <div *ngIf="!blurGameStats" style="text-align: center; z-index: 10000;">
+                <p-progressSpinner></p-progressSpinner>
+            </div>
+            <div *ngIf="blurGameStats" style="margin: 8px; width: auto; overflow:hidden;">
+                    <p-table #workerStatsTableCtl [value]="blurGameStats.workerStats" [columns]="workerStatsTable.columns" [exportFilename]="workerStatsExportFilename()" [style]="{ 'font-size' : '12px'}" sortMode="multiple" [paginator]="true" pageLinks="10" paginatorPosition="both" [rows]="200" [rowsPerPageOptions]="[10, 20, 30, 50, 100, 200, 300, 500]" paginatorPosition="both">
+                        <ng-template pTemplate="caption">            
+                            <div class="ui-g">
+                                <div class="ui-g-4 ui-md-4" style="text-align: left">
+                                    <!-- Experiment Modality:<p-dropdown [options]="modalityOptions" [(ngModel)]="selectedModality" (onChange)="loadBlurGameResultsByModality()"></p-dropdown> -->
+                                    Experiment Modality:<p-dropdown [options]="modalityOptions" [(ngModel)]="selectedModality" (onChange)="reBuildBlurGameStats(); applyFilter()"></p-dropdown>
+                                    <p-button icon="fas fa-filter" pTooltip="Show Filters" tooltipPosition="left" (click)="op1.toggle($event)"></p-button>                                    
+                                    <br>
+                                    <span># of Workers: {{blurGameStats.workerStats.length}}</span>
+                                    <br>
+                                    <a (click)="displayExcludedWorkers=true"># of Excluded Workers: {{blurGameStatsfilter.excludedWorkerIds.length}}</a>
+                                    <br>
+                                    <span># of Images Worked: {{blurGameStats.getUniqueQuestionIds().length}}</span>
+                                    <br>
+                                    <a (click)="displayAnswerTableForFinalAnswers()"># of Questions Completed: {{blurGameStats.completedTotal}}</a>
+                                    <br>
+                                    <span>Turker Correct (Final Answer): {{blurGameStats.completedCorrect}} / {{blurGameStats.completedPercentCorrect | percent}}</span>
+                                    <br>                         
+                                    <span>Model Correct: {{blurGameStats.modelCorrect}} / {{blurGameStats.modelPercentCorrect | percent}}</span>
+                                    <br>           
+                                    <div *ngIf="isNoModality()">
+                                        <a (click)="displayAnswerTableForAllGuesses()"># of Guesses: {{blurGameStats.guessesTotal}}</a>
+                                        <br>
+                                        <span>Turker Correct (All Guesses): {{blurGameStats.guessesCorrect}} / {{blurGameStats.guessesPercentCorrect | percent}}</span>
+                                        <br>
+                                        <span>Average # of Guesses per Question: {{blurGameStats.guessesTotal / blurGameStats.completedTotal | number}}</span>
+                                    </div>
+                                    <div *ngIf="!isNoModality()">                                        
+                                        <!-- <span>Correct when Model is Correct: {{blurGameStats.correctAndModelCorrect}} / {{blurGameStats.percentCorrectWhenModelIsCorrect | percent}}</span>
+                                        <br>
+                                        <span>Correct when Model is Wrong: {{blurGameStats.correctAndModelWrong}} / {{blurGameStats.percentCorrectWhenModelIsWrong | percent}}</span>
+                                        <br>
+                                        <span>Wrong when Model is Correct: {{blurGameStats.wrongAndModelCorrect}} / {{blurGameStats.percentWrongWhenModelIsCorrect | percent}}</span>
+                                        <br>
+                                        <span>Wrong when Model is Wrong: {{blurGameStats.wrongAndModelWrong}} / {{blurGameStats.percentWrongWhenModelIsWrong | percent}}</span>
+                                        <br>
+                                        ------------- -->
+                                        <span>Model is Correct and Turker Accepted: {{blurGameStats.modelCorrectAndUserAccepted.count}} / {{blurGameStats.percentModelCorrectAndUserAccepted | percent}}</span>
+                                        Likert: {{blurGameStats.modelCorrectAndUserAccepted.avgLiker1 | number:'1.1-1'}} / {{blurGameStats.modelCorrectAndUserAccepted.avgLiker2 | number:'1.1-1'}}
+                                        <br>
+                                        <span>Model is Correct and Turker Override is Correct: {{blurGameStats.modelCorrectAndUserOverrideCorrect.count}} / {{blurGameStats.percentModelCorrectAndUserOverrideCorrect | percent}}</span>
+                                        Likert: {{blurGameStats.modelCorrectAndUserOverrideCorrect.avgLiker1 | number:'1.1-1'}} / {{blurGameStats.modelCorrectAndUserOverrideCorrect.avgLiker2 | number:'1.1-1'}}
+                                        <br>
+                                        <span>Model is Correct and Turker Override is Wrong: {{blurGameStats.modelCorrectAndUserOverrideWrong.count}} / {{blurGameStats.percentModelCorrectAndUserOverrideWrong | percent}}</span>
+                                        Likert: {{blurGameStats.modelCorrectAndUserOverrideWrong.avgLiker1 | number:'1.1-1'}} / {{blurGameStats.modelCorrectAndUserOverrideWrong.avgLiker2 | number:'1.1-1'}}
+                                        <br>
+                                        <span>Model is Wrong and Turker Accepted: {{blurGameStats.modelWrongAndUserAccepted.count}} / {{blurGameStats.percentModelWrongAndUserAccepted | percent}}</span>
+                                        Likert: {{blurGameStats.modelWrongAndUserAccepted.avgLiker1 | number:'1.1-1'}} / {{blurGameStats.modelWrongAndUserAccepted.avgLiker2 | number:'1.1-1'}}
+                                        <br>
+                                        <span>Model is Wrong and Turker Override is Correct: {{blurGameStats.modelWrongAndUserOverrideCorrect.count}} / {{blurGameStats.percentModelWrongAndUserOverrideCorrect | percent}}</span>
+                                        Likert: {{blurGameStats.modelWrongAndUserOverrideCorrect.avgLiker1 | number:'1.1-1'}} / {{blurGameStats.modelWrongAndUserOverrideCorrect.avgLiker2 | number:'1.1-1'}}
+                                        <br>
+                                        <span>Model is Wrong and Turker Override is Wrong - Same: {{blurGameStats.modelWrongAndUserOverrideWrongSame.count}} / {{blurGameStats.percentModelWrongAndUserOverrideWrongSame | percent}}</span>
+                                        Likert: {{blurGameStats.modelWrongAndUserOverrideWrongSame.avgLiker1 | number:'1.1-1'}} / {{blurGameStats.modelWrongAndUserOverrideWrongSame.avgLiker2 | number:'1.1-1'}}
+                                        <br>
+                                        <span>Model is Wrong and Turker Override is Wrong - New: {{blurGameStats.modelWrongAndUserOverrideWrongNew.count}} / {{blurGameStats.percentModelWrongAndUserOverrideWrongNew | percent}}</span>
+                                        Likert: {{blurGameStats.modelWrongAndUserOverrideWrongNew.avgLiker1 | number:'1.1-1'}} / {{blurGameStats.modelWrongAndUserOverrideWrongNew.avgLiker2 | number:'1.1-1'}}
+                                    </div>                                                                        
+                                    <span>Average # of Questions per Worker: {{blurGameStats.completedTotal / blurGameStats.workerStats.length | number}}</span>                                    
+                                    <br>
+                                    <span>Average effort time per Question: {{blurGameStats.avgEffortTimePerQuestion | number}} seconds</span>
+                                    <br>
+                                    <span>Average effort time per Worker: {{blurGameStats.avgEffortTimePerWorker | number}} seconds</span>
+                                    <br>
+                                    <span>Average blur level for correct answers: {{blurGameStats.avgCorrectBlurLevel | number}}</span>
+                                    <br>
+                                    <span>HIT Rewards Collected: {{blurGameStats.hitRewards | number}}</span>
+                                    <br>
+                                    <p-button icon="fas fa-cloud-download-alt" pTooltip="Download latest blur game results and reset filter" tooltipPosition="left" (onClick)="loadBlurGameResults()"></p-button>                                    
+                                    <p-button icon="fas fa-file-csv" pTooltip="Export image/question blur stats as CSV" tooltipPosition="left" (click)="exportStats()"></p-button>
+                                </div>
+                                <div class="ui-g-8 ui-md-8" style="text-align:right">
+                                    <p-chart height="350px" type="bar" [data]="blurGameStats.blurHistogram" [options]="histogramOptions"></p-chart>                                    
+                                    <p-chart height="350px" type="line" [data]="blurGameStats.performanceOverTime" [options]="performanceOverTimeOptions"></p-chart>
+                                </div>                               
+                            </div>
+                            <div style="text-align: left">
+                                <!-- <span>{{workerStatsTableCtl.totalRecords}} of {{blurGameStats.workerStats.length}}</span> -->
+                                <button type="button" pButton icon="fas fa-file-export" iconPos="left" (click)="workerStatsTableCtl.exportCSV()" pTooltip="Export worker stats table to CSV format" tooltipPosition="left"></button>
+                            </div>
+                        </ng-template>
+                        <ng-template pTemplate="header">
+                            <tr>
+                                <th style="width: 30px;">
+                                    
+                                </th>
+                                <th pSortableColumn="workerId" style="width: 150px;" >
+                                    Worker Id 
+                                    <p-sortIcon field="workerId"></p-sortIcon>
+                                </th>
+                                <th pSortableColumn="startedOn"   style="width: 150px;">
+                                    Started On
+                                    <p-sortIcon field="startedOn"></p-sortIcon>
+                                </th>
+                                <th pSortableColumn="screenResolution"   style="width: 150px;">
+                                    Screen Resolution & Zoom Level
+                                    <p-sortIcon field="screenResolution"></p-sortIcon>
+                                </th>
+                                <th pSortableColumn="sandbox" pTooltip="Sandbox 0=live 1=worker_sandbox 2=equas_hosted" style="width: 30px;">
+                                    SB
+                                    <p-sortIcon field="sandbox"></p-sortIcon>
+                                </th>
+                                <th *ngIf="blurGameStatsfilter.adhocText" pSortableColumn="adHocTextCount" style="width: 75px;">
+                                    In Ad-Hoc
+                                    <p-sortIcon field="adHocTextCount"></p-sortIcon>
+                                </th>
+                                <th pSortableColumn="hitRewards" style="width: 75px;">
+                                    HIT Rewards
+                                    <p-sortIcon field="hitRewards"></p-sortIcon>
+                                </th>
+                                <th pSortableColumn="bonusPayTotal" style="width: 65px;">
+                                    Bonus ($)
+                                    <p-sortIcon field="bonusPayTotal"></p-sortIcon>
+                                </th> 
+                                <th pSortableColumn="completedTotal"  >
+                                    # of Questions Completed
+                                    <p-sortIcon field="completedTotal"></p-sortIcon>
+                                </th>                                
+                                <th pSortableColumn="completedPercentCorrect"  >
+                                    % Correct (Final Answer)
+                                    <p-sortIcon field="completedPercentCorrect"></p-sortIcon>
+                                </th>
+                                <th *ngIf="!isNoModality()" pSortableColumn="modelPercentCorrect"  >
+                                    % Model Correct
+                                    <p-sortIcon field="modelPercentCorrect"></p-sortIcon>
+                                </th>                                 
+                                <th *ngIf="!isNoModality()" pSortableColumn="correctAndModelCorrect"  >
+                                    # Correct when Model is Correct
+                                    <p-sortIcon field="correctAndModelCorrect"></p-sortIcon>
+                                </th> 
+                                <th *ngIf="!isNoModality()" pSortableColumn="correctAndModelWrong"  >
+                                    # Correct when Model is Wrong
+                                    <p-sortIcon field="correctAndModelWrong"></p-sortIcon>
+                                </th>
+                                <th *ngIf="!isNoModality()" pSortableColumn="wrongAndModelCorrect"  >
+                                    # Wrong when Model is Correct
+                                    <p-sortIcon field="wrongAndModelCorrect"></p-sortIcon>
+                                </th>
+                                <th *ngIf="!isNoModality()" pSortableColumn="wrongAndModelWrong"  >
+                                    # Wrong when Model is Wrong
+                                    <p-sortIcon field="wrongAndModelWrong"></p-sortIcon>
+                                </th>
+                                <th *ngIf="isComponentMaskModality()" pSortableColumn="componentOverlayToggles"  >
+                                    Componenet Mask Overlay Toggle Count
+                                    <p-sortIcon field="componentOverlayToggles"></p-sortIcon>
+                                </th>  
+                                <th *ngIf="isNoModality()" pSortableColumn="avgGuessesPerQuestion"  >
+                                    Average Guesses Per Question
+                                    <p-sortIcon field="avgGuessesPerQuestion"></p-sortIcon>
+                                </th>
+                                <th *ngIf="isNoModality()" pSortableColumn="guessesTotal"  >
+                                    # of Guesses
+                                    <p-sortIcon field="guessesTotal"></p-sortIcon>
+                                </th>
+                                <th *ngIf="isNoModality()" pSortableColumn="guessesPercentCorrect"  >
+                                    % Correct (All guesses)
+                                    <p-sortIcon field="guessesPercentCorrect"></p-sortIcon>
+                                </th>
+                                <!-- <th style="width: 75px;">Attempt</th> -->
+                                <th pSortableColumn="totalEffortTimeSpent"  
+                                [escape]="false" pTooltip="This is the cumulative time between requested time and completed time for each question.<br>This DOES NOT include breaks taken between HITs" >
+                                    Effort Time Spent (sec)                                        
+                                    <p-sortIcon field="totalEffortTimeSpent"></p-sortIcon>
+                                </th>
+                                <th pSortableColumn="avgEffortTimePerQuestion"  >
+                                    Effort Time Per Question (sec)
+                                    <p-sortIcon field="avgEffortTimePerQuestion"></p-sortIcon>
+                                </th>     
+                               
+                                <!-- <th pSortableColumn="totalTimeSpent"  style="width: 150px;"
+                                [escape]="false" pTooltip="This is the elapsed time between the Turkers very first submission and their last. <br>This includes breaks taken between HITs" >
+                                    Elapsed Time Spent (sec)                                        
+                                    <p-sortIcon field="totalTimeSpent"></p-sortIcon>
+                                </th>                                                           
+                                <th pSortableColumn="avgTimePerQuestion"  style="width: 150px;">
+                                    Elapsed Time Per Question (sec)
+                                    <p-sortIcon field="avgTimePerQuestion"></p-sortIcon>
+                                </th> -->
+                                
+                                <!-- <th style="width: 150px;">Final Answer</th>
+                                <th>Feedback</th> -->
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-workerStat>
+                            <tr [style.color]="getColorForAdHocFilter(workerStat.adHocTextCount)">
+                                <td style="width: 30px;">
+                                    <i class="fas fa-trash-alt" (click)="excludeWorker(workerStat.workerId)" pTooltip="Temporarily remove this worker from stats."></i>
+                                </td>
+                                <td style="width: 150px;">
+                                    <a (click)="displayAnswerTableForWorker(workerStat.workerId)">
+                                        {{workerStat.workerId}}
+                                    </a>                                    
+                                </td>
+                                <td style="width: 150px;">{{workerStat.startedOn | date:'short'}}</td>
+                                <td style="width: 150px;">{{workerStat.screenResolution}}</td>                                
+                                <td style="width: 30px;">{{workerStat.sandbox}}</td>                                
+                                <td *ngIf="blurGameStatsfilter.adhocText" style="width: 75px;">{{workerStat.adHocTextCount}}</td>
+                                <td style="width: 75px;">{{workerStat.hitRewards}}</td>
+                                <td style="width: 65px;">${{workerStat.bonusPayTotal | number : '1.2-2'}}</td>
+                                <td>{{workerStat.completedTotal}}</td>
+                                <td>{{workerStat.completedPercentCorrect | percent}}</td>                                
+                                <!-- <td *ngIf="!isNoModality()">{{workerStat.percentCorrectWhenModelIsCorrect | percent}}</td>
+                                <td *ngIf="!isNoModality()">{{workerStat.percentCorrectWhenModelIsWrong | percent}}</td>
+                                <td *ngIf="!isNoModality()">{{workerStat.percentWrongWhenModelIsCorrect | percent}}</td>
+                                <td *ngIf="!isNoModality()">{{workerStat.percentWrongWhenModelIsWrong | percent}}</td> -->
+                                <td *ngIf="!isNoModality()">{{workerStat.modelPercentCorrect | percent}}</td>
+                                <td *ngIf="!isNoModality()">{{workerStat.correctAndModelCorrect}}</td>
+                                <td *ngIf="!isNoModality()">{{workerStat.correctAndModelWrong}}</td>
+                                <td *ngIf="!isNoModality()">{{workerStat.wrongAndModelCorrect}}</td>
+                                <td *ngIf="!isNoModality()">{{workerStat.wrongAndModelWrong}}</td>
+                                <td *ngIf="isComponentMaskModality()" >{{workerStat.componentOverlayToggles}}</td>
+                                <td *ngIf="isNoModality()">{{workerStat.avgGuessesPerQuestion | number:'1.0-0'}}</td>
+                                <td *ngIf="isNoModality()">{{workerStat.guessesTotal}}</td>
+                                <td *ngIf="isNoModality()">{{workerStat.guessesPercentCorrect | percent}}</td>
+                                <td>{{workerStat.totalEffortTimeSpent | number:'1.0-0'}}</td>
+                                <td>{{workerStat.avgEffortTimePerQuestion | number:'1.0-0'}}</td>
+                                
+                                <!-- <td>{{workerStat.totalTimeSpent | number:'1.0-0'}}</td>
+                                <td>{{workerStat.avgTimePerQuestion | number:'1.0-0'}}</td> -->
+                                
+                                <!-- <td>{{blurAnswer.attempt}}</td>
+                                <!-- <td style="width: 100px;">{{blurAnswer.timeSpent}}</td> -->
+                                <!-- <td [style.color] = "blurAnswer.isCorrect ? 'green' : 'red'">{{blurAnswer.answer}}</td>
+                                <td>{{blurAnswer.feedback}}</td> --> 
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+        </p-tabPanel>
+        <p-tabPanel [disabled]="!blurGameStats" header="Question Stats" leftIcon="fas fa-chart-bar">
+            <div *ngIf="!blurGameStats" style="text-align: center; z-index: 10000;">
+                <p-progressSpinner></p-progressSpinner>
+            </div>
+            <div *ngIf="blurGameStats" style="overflow:auto;">
+                <p-chart type="line" [data]="vizData" [options]="vizOptions" height="85vh" (onDataSelect)="selectVizData($event)"></p-chart>
+            </div>
+        </p-tabPanel>
+    </p-tabView>
+    <p-dialog [(visible)]="displayExcludedWorkers" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [style]="{'width' : '98hw'}">
+        <p-header>            
+            <i class="fas fa-table"></i>
+            Excluded Workers ({{blurGameStatsfilter.excludedWorkerIds.length}})
+        </p-header>
+        <p-button icon="fa fa-fw fa-trash-alt" pTooltip="Remove All" tooltipPosition="left" label="Remove All" (onClick)="blurGameStatsfilter.excludedWorkerIds=[]; reBuildBlurGameStats();"></p-button> 
+        <div *ngFor="let workerId of blurGameStatsfilter.excludedWorkerIds; index as i;">
+            <p-button icon="fa fa-fw fa-trash-alt" pTooltip="Remove from excluded workers" tooltipPosition="left"  (onClick)="blurGameStatsfilter.excludedWorkerIds.splice(i, 1); reBuildBlurGameStats();"></p-button>  {{workerId}}
+        </div>
+    </p-dialog>
+    <p-dialog *ngIf="answerTable.display" [(visible)]="answerTable.display" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [style]="{'width' : '98hw'}">
+        <p-header>
+            <i class="fas fa-table"></i>            
+        </p-header>
+        <p-table [value]="answerTable.answers" [columns]="answerTable.columns" [style]="{ 'font-size' : '12px'}" sortMode="multiple" [paginator]="true" pageLinks="10" paginatorPosition="both" [rows]="200" [rowsPerPageOptions]="[10, 20, 30, 50, 100, 200, 300]" paginatorPosition="both">
+                <ng-template pTemplate="caption">            
+                    <div class="ui-g">
+                        <div class="ui-g-6 ui-md-8" style="text-align: left">
+                            <span># of Answers: {{answerTable.answers.length}}</span>
+                        </div>        
+                        <div class="ui-g-6 ui-md-4" style="text-align:right">
+                            
+                        </div>
+                    </div>
+                </ng-template>
+                <ng-template pTemplate="header" let-columns>
+                    <tr>
+                        <th *ngFor="let col of columns" [pSortableColumn]="col.field" >
+                            {{col.header}}
+                            <p-sortIcon [field]="col.field"></p-sortIcon>
+                        </th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-rowData let-columns="columns">
+                    <tr [style.color] = "rowData['isCorrect'] ? 'green' : 'red'"
+                        [style.font-weight] = "rowData['isFinalAnswer'] ? 'bold' : 'normal'"
+                    >
+                        <td *ngFor="let col of columns" >
+                            {{rowData[col.field]}}
+                        </td>
+                    </tr>
+                </ng-template>
+            </p-table>         
+    </p-dialog>
+
+    <!-- <p-dialog *ngIf="blurGameStats" [(visible)]="blurGameStatsfilter.display" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [style]="{'width' : '98hw'}">
+        <p-header>
+            <i class="fas fa-filter"></i>
+        </p-header>
+        Remove duplicate trials: <p-checkbox pTooltip="(Bug) In a few cases workers were seeing duplicate image/questions. Allow the first, but exclude the rest." [(ngModel)]="blurGameStatsfilter.removeDuplicateTrials" binary="true"></p-checkbox>
+        <br>
+        <p-button icon="fas fa-filter" tooltipPosition="left" label="Apply Filter" (onClick)="applyFilter()"></p-button>
+    </p-dialog> -->
+    <p-overlayPanel #op1 [style]="{'margin-top' : '-45px'}">
+        <div style="display:flex">
+            <div>
+                Strart Date
+                <p-calendar [(ngModel)]="blurGameStatsfilter.minDate" [required]="true" [showTime]="true" [hideOnDateTimeSelect]="true" [showIcon]="true" [style]="{width: '100%'}"  (click)="$event.stopPropagation();" ></p-calendar>
+            </div>
+            <div>
+                End Date
+                <p-calendar [(ngModel)]="blurGameStatsfilter.maxDate" [required]="true" [showTime]="true" [hideOnDateTimeSelect]="true" [showIcon]="true" [style]="{width: '100%'}"  (click)="$event.stopPropagation();" ></p-calendar>
+            </div>
+        </div>
+        <input pInputText placeholder="Ad-Hoc WorkerId Selection" [(ngModel)]="blurGameStatsfilter.adhocText" style="width:500px;">        
+        <br>
+        <p-checkbox label="Remove duplicate trials" pTooltip="(Bug) In a few cases workers were seeing duplicate image/questions. Allow the first, but exclude the rest." [(ngModel)]="blurGameStatsfilter.removeDuplicateTrials" binary="true"></p-checkbox>
+        <!-- <br>
+        <br>
+        <p-checkbox label="Exclude Yes/No questions" [(ngModel)]="blurGameStatsfilter.excludeYesNo" binary="true"></p-checkbox> -->
+        <br>
+        <br>
+        <p-checkbox label="Group Workers by Assignment Id" [(ngModel)]="blurGameStatsfilter.groupWorkersByAssignmentId" binary="true" pTooltip="Only used for calculating Turker bonuses"></p-checkbox>
+        <br>
+        <br>
+        <p-checkbox label="Only include responses for current dataset" [(ngModel)]="blurGameStatsfilter.onlyIncludeCurrentDataset" binary="true" pTooltip="Only responses that are part of the current question/image dataset will be included"></p-checkbox>
+        <br>
+        <br>
+        <p-checkbox label="Virtual Experiment" [(ngModel)]="blurGameStatsfilter.virtualExperiment" binary="true" pTooltip="Only included guesses that match the goldilocks blur level of each image. To only be used with 'None' modality"></p-checkbox>
+        <br>
+        <br>
+        Worker Trial Range: {{blurGameStatsfilter.trialRange[0]}} - {{blurGameStatsfilter.trialRange[1]}}
+        <br>
+        <br>
+        <p-slider [(ngModel)]="blurGameStatsfilter.trialRange" [style]="{'width':'14em'}" [min]="0" [max]="50" [range]="true"></p-slider>
+        <br>
+        Minimum Effort Time Per Question (sec): {{blurGameStatsfilter.avgEffortTimePerQuestion}}
+        <br>
+        <br>
+        <p-slider [(ngModel)]="blurGameStatsfilter.avgEffortTimePerQuestion" [style]="{'width':'14em'}" [min]="0" [max]="200"></p-slider>
+        <br>
+        Minimum Completed Questions: {{blurGameStatsfilter.minCompletedQuestions}}
+        <br>
+        <br>
+        <p-slider [(ngModel)]="blurGameStatsfilter.minCompletedQuestions" [style]="{'width':'14em'}" [min]="0" [max]="50"></p-slider>
+        <br>
+        Minimum Average Guesses Per Question: {{blurGameStatsfilter.minAvgGuessesPerQuestion}}
+        <br>
+        <br>
+        <p-slider [(ngModel)]="blurGameStatsfilter.minAvgGuessesPerQuestion" [style]="{'width':'14em'}" [min]="0" [max]="20"></p-slider>
+        <br>
+        Minimum Percent Correct: {{blurGameStatsfilter.minPercentCorrect}}%
+        <br>        
+        <br>
+        <p-slider [(ngModel)]="blurGameStatsfilter.minPercentCorrect" [style]="{'width':'14em'}" [min]="0" [max]="100"></p-slider>
+        <br>
+        
+        <p-button icon="fas fa-filter" label="Apply Filter" (onClick)="applyFilter()"></p-button>
+        <p-button icon="fas fa-ban" label="Clear Filter" tooltipPosition="left" (onClick)="clearFilter()"></p-button>
+    </p-overlayPanel>
+</div>
+
+<ng-template #questionDetails let-annotation>        
+        <!-- <a style="height: 160px; width: 160px; padding:.5em" class="ui-g-12 ui-md-2">
+                <img src="/evaluation_dataset/v2_coco/training/images/{{annotation.imageName}}" style="height: 100%; width: 100%;" pTooltip="{{annotation.imageName}}" tooltipPosition="top">
+            </a> -->
+        <div style="border-bottom: 1px solid #d9d9d9">
+            <div style="text-align:center; float: left;">
+                <a  href="./#/blur-game?modality=component-mask&forceQuestionId={{annotation.question_id}}" target="_blank" pTooltip="Open blur game for this image in a new browser tab."
+                [ngStyle]="{ 'background-image': 'url(/evaluation_dataset/v2_coco/training/images/' + annotation.imageName + ')', 'background-size' : '400px 400px', 'padding' : '0'}" style="width: 400px; height: 400px; padding:.5em" class="ui-g-12 ui-md-3" (click)="annotationDialogModel.selectAnnotation(annotation)">
+                    <!-- <img src="/evaluation_dataset/v2_coco/training/images/{{annotation.imageName}}" style="height: 100%; width: 100%;" pTooltip="{{annotation.imageName}}" tooltipPosition="top"> -->
+                    <!-- <img [style.visibility]="showSegmentationMask ? 'visible' : 'hidden'" src="/evaluation_dataset/fe_ge_results/seg/{{annotation.question_id}}.jpg" style="z-index:1; mix-blend-mode: color; width: 400px; height: 400px;"> -->
+                    <img [style.visibility]="showSegmentationMask ? 'visible' : 'hidden'" src="/evaluation_dataset/component_explanations/no_fill/{{annotation.question_id}}.png" style="z-index:1; mix-blend-mode: color; width: 400px; height: 400px;">
+                </a>
+                <!-- <img src="/evaluation_dataset/v2_coco/training/images/{{annotation.imageName}}"> -->
+            </div>
+            <div style="float: left; margin: 8px; max-width: 350px;">
+                <div style="display:grid;">
+                    <h4>{{annotation.question}}?</h4>
+                    <span>
+                        Model Answer:
+                        <b style.color="{{ annotation.modelAnswer == annotation.topAnswer ? 'darkgreen' : 'rgb(204, 118, 7)' }}">{{annotation.modelAnswer}}</b>
+                        <!-- <p-button icon="fa fa-image" pTooltip="View this image/question/answer in the VQA playground" tooltipPosition="right" (onClick)="vqaPlaygroundDialogModel.displayImage(annotation.imageName, annotation.question, annotation.topAnswer)"></p-button> -->
+                        <!-- <p-button icon="fa fa-eye-slash" pTooltip="Search for similar rejected alternatives" tooltipPosition="right" (onClick)="annotationDialogModel.searchForRejectedAlternatives(annotation)"></p-button> -->
+                    </span>
+                    <!-- <span>
+                        Old Model Answer:
+                        <b style.color="{{ annotation.OLDmodelAnswer == annotation.topAnswer ? 'darkgreen' : 'rgb(204, 118, 7)' }}">{{annotation.OLDmodelAnswer}}</b>                        
+                    </span> -->
+                    <span>
+                        Top Turker Answer:
+                        <b>{{annotation.topAnswer}}</b>
+                    </span>
+                    <span>
+                        Explanation:
+                        <span [innerHTML]="annotation.explanationHtml | safe">
+                        </span>
+                    </span>
+                    <!-- <span>
+                        Old Explanation:
+                        <span [innerHTML]="annotation.OLDexplanationHtml | safe">
+                        </span>
+                    </span> -->
+                    <div>
+                        <p-button icon="fa fa-fw fa-thumbs-up" pTooltip="Include this image in the blur game experiment" [styleClass]="!isExcluded(annotation.question_id) ? 'ui-button-success' : 'ui-button-secondary'" tooltipPosition="left" (onClick)="includeQuestionId(annotation.question_id)"></p-button>
+                        <p-button icon="fa fa-fw fa-thumbs-down" pTooltip="Exclude this image from the blur game experiment" [styleClass]="isExcluded(annotation.question_id) ? 'ui-button-danger' : 'ui-button-secondary'" tooltipPosition="left" (onClick)="excludeQuestionId(annotation.question_id)"></p-button>
+                    </div>
+                    <span>Id: {{annotation.question_id}}</span>
+                    <div style="margin-top: 16px; width: 350px">
+                        <p-table [value]="annotation.topN" [style]="{ 'font-size' : '12px'}">
+                            <ng-template pTemplate="header">
+                                <tr>
+                                    <th>Top 5 Model Answers</th>
+                                    <th>Score</th>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="body" let-item>
+                                <tr>
+                                    <td>{{item.answer}}</td>
+                                    <td>{{item.score | number}}</td>
+                                </tr>
+                            </ng-template>
+                        </p-table>
+                    </div>
+                    <!-- <div *ngIf="componentExplanations[annotation.question_id]">
+                        Components:
+                        <div *ngFor="let component of componentExplanations[annotation.question_id].componentExplanation.slice(0, 5)" [style.color]="getRgb(component)" >
+                            <b>{{component.class}}</b>  : relevance = {{component.scoreSum | number}} 
+                        </div>                        
+                    </div>                -->
+                    <div>
+                        Components:
+                        <div *ngFor="let component of annotation.componentExplanation" [style.color]="getRgb(component)" >
+                            <b>{{component.class}}</b>  : relevance = {{component.scoreSum | number}} 
+                        </div>                        
+                    </div>
+                </div>
+            </div>
+            <!-- <div style="float: left; margin: 8px; width: 350px">
+                <p-table [value]="annotation.answers">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Turker Answers <b>(Consensus: {{annotation.consensus}})</b></th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-item>
+                        <tr>
+                            <td>{{item.answer}}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div> -->
+            <div *ngIf="!blurGameStats" style="text-align: center; z-index: 10000;">
+                <p-progressSpinner></p-progressSpinner>
+            </div>
+            <div *ngIf="blurGameStats && blurGameStats.finalAnswersByQid[annotation.question_id]" style="margin: 8px; width: auto; overflow:hidden;">
+                <p-table [value]="blurGameStats.finalAnswersByQid[annotation.question_id]" [style]="{ 'font-size' : '12px'}">
+                        <ng-template pTemplate="caption">            
+                                <div class="ui-g">
+                                    <div class="ui-g-6 ui-md-8" style="text-align: left">
+                                        Blur Level (Correct final answers) - Median: {{annotation.pairBlurStats.medianCorrectGuessBlurLevel()}}  Average: {{annotation.pairBlurStats.avgCorrectBlurLevel() | number:'1.1-1'}}  @ {{annotation.pairBlurStats.pctCorrect() | percent}} Correct                                                    
+                                        <br>
+                                        <!-- Average Blur Level (All final answers): {{annotation.pairBlurStats.avgAllBlurLevel() | number:'1.1-1'}}
+                                        <br>                                                     -->
+                                        Blur Level (Correct first guess)   - Median: {{annotation.pairBlurStats.medianFirstCorrectGuessBlurLevel()}}  Average: {{annotation.pairBlurStats.avgFirstCorrectGuessBlurLevel() | number:'1.1-1'}}
+                                    </div>
+                                    <div class="ui-g-6 ui-md-4" style="text-align:right">                                                        
+                                        <a (click)="displayFinalAnswerTableByQid(annotation.question_id)">
+                                            Final Answers: {{annotation.pairBlurStats.allBlurLevelCount}}
+                                        </a>
+                                        <br>
+                                        <a (click)="displayAnswerTableByQid(annotation.question_id)">
+                                            Total Guesses: {{annotation.pairBlurStats.totalGuesses}}
+                                        </a>
+                                    </div>
+                                </div>
+                            </ng-template>
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th style="width: 150px;">Worker Id</th>
+                            <th style="width: 50px;">Blur</th>
+                            <th style="width: 75px;">Attempt</th>
+                            <!-- <th style="width: 100px;">Time(sec)</th> -->
+                            <th style="width: 150px;">Final Answer</th>
+                            <th style="width: 50px;">Likert #1</th>
+                            <th>Feedback</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-blurAnswer>
+                        <tr>
+                            <td>
+                                <a (click)="displayAnswerTableForWorkerByQid(annotation.question_id, blurAnswer.workerId)">
+                                    {{blurAnswer.workerId}}
+                                </a>  
+                            </td>
+                            <td>{{blurAnswer.blurAmount}}</td>
+                            <td>{{blurAnswer.attempt}}</td>
+                            <!-- <td style="width: 100px;">{{blurAnswer.timeSpent}}</td> -->
+                            <td [style.color] = "blurAnswer.isCorrect ? 'green' : 'red'">{{blurAnswer.answer}}</td>
+                            <td>{{getFirstLikertAnswer(blurAnswer.likert)}}</td>
+                            <td>{{blurAnswer.feedback}}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
+        </div>            
+</ng-template>
+
+<p-dialog *ngIf="displayVizDetails" [(visible)]="displayVizDetails" [dismissableMask]="true" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true">
+    <ng-container *ngTemplateOutlet="questionDetails; context: {$implicit: selectedAnnotation} "></ng-container>
+</p-dialog>

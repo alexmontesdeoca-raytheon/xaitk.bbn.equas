@@ -1,0 +1,13 @@
+# ignore all files then whitelist only what is needed
+
+*
+
+!models/
+!/service
+!/prg
+!/ganpaint
+!__init__.py
+!logging.conf
+!requirements_linux_full.txt
+!requirements_linux_no_models.txt
+!utilities_service.py

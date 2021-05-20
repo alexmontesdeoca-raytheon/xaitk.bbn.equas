@@ -1,0 +1,22 @@
+[
+    {
+        "id": "0",
+        "question": "The robot's answer helped me to answer the question"
+    },
+    {
+        "id": "1",
+        "question": "I understand the robot's answer for the question"
+    },
+    {
+        "id": "2",
+        "question": "The robot's answer for the question is satisfying"
+    },   
+    {
+        "id": "3",
+        "question": "This answer indicates the robot's accuracy"
+    },
+    {
+        "id": "4",
+        "question": "This answer lets me judge when I should/shouldn’t trust the robot"
+    }
+]

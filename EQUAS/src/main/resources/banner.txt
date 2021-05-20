@@ -1,0 +1,13 @@
+
+  ${AnsiColor.GREEN}  /\\\       /\\\     /\\\\\\\\\     /\\\\\\\\\\\
+  ${AnsiColor.GREEN}  \///\\\   /\\\/    /\\\\\\\\\\\\\  \/////\\\///
+  ${AnsiColor.GREEN}     \///\\\\\\/     /\\\/////////\\\     \/\\\
+  ${AnsiColor.GREEN}        \//\\\\      \/\\\       \/\\\     \/\\\
+  ${AnsiColor.GREEN}          \/\\\\      \/\\\\\\\\\\\\\\\     \/\\\
+  ${AnsiColor.GREEN}           /\\\\\\     \/\\\/////////\\\     \/\\\
+  ${AnsiColor.GREEN}          /\\\////\\\   \/\\\       \/\\\     \/\\\
+  ${AnsiColor.GREEN}         /\\\/   \///\\\ \/\\\       \/\\\  /\\\\\\\\\\\
+  ${AnsiColor.GREEN}         \///       \///  \///        \///  \///////////
+
+
+:: Running Spring Boot ${spring-boot.version} ::

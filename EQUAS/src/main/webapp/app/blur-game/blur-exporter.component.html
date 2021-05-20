@@ -1,0 +1,74 @@
+<p-toast position="center" [baseZIndex]="99999"></p-toast>
+
+<div *ngIf="loadComplete">
+    <div class="ui-g-12 ui-md-12 ui-g-nopad">
+        <div class="ui-g">
+            <div class="ui-g-12 ui-md-12">
+                <p-panel>
+                    <p-header>
+                        <i class="far fa-image"></i>
+                        <!-- {{currentAnnotation.question_id}} -->
+                        <span >
+                            {{currentAnnotation.question_id}}
+                        </span>
+                        <div style="float: right; text-align: center;">                            
+                            <span>Blurriness : {{blurAmount}}%</span>
+                            <p-slider (click)="$event.stopPropagation();" [style]="{'width':'250px','margin-top':'8px'}" [(ngModel)]="blurAmount" [min]="0" [max]="blurMax" [step]="1" tooltipPosition="top"></p-slider>
+                            <br>
+                            <p-button (onClick)="saveBlurryImage()" icon="far fa-fw fa-save" label='Save Single' pTooltip="Save/download blurry image" tooltipPosition="left"></p-button>
+                            <p-button (onClick)="batchSaveBlurryImages()" styleClass="ui-button-warning" icon="far fa-fw fa-save" label='Batch Save' pTooltip="Batch Save/download all blurry images" tooltipPosition="left"></p-button>
+                        </div>
+                        <div *ngIf="blurStrategy === 'Downsample'">
+                            Resolution: {{pixelateFilter.newWidth}} x {{pixelateFilter.newHeight}} / {{pixelateFilter.originalWidth}} x {{pixelateFilter.originalHeight}}
+                            <br>
+                            Pixels: {{pixelateFilter.newPixelCount()}} / {{pixelateFilter.originalPixelCount()}} = {{pixelateFilter.pixelReductionPercent() | percent : '1.1-2'}}
+                            <br>
+                            Scale: {{pixelateFilter.downSampleScale | percent : '1.1-2'}}
+                            <!-- 
+                            Constrained size:  {{pixelateFilter.constrainedWidth()}} x {{pixelateFilter.constrainedHeight()}}
+                            <br>
+                            Gaussian Estimate: {{guassianEstimation() | percent : '1.1-2'}} -->
+                            <br>
+                            Smoothing Factor: {{blurSmoothing}}%
+                            <!-- <p-slider [(ngModel)]="blurSmoothing" [min]="0" [max]="100"></p-slider>
+                            Smoothing Radius: {{pixelateFilter.blurRadius | number}} -->
+                            <br>
+                            Question: {{currentAnnotation.question}}?
+                            <br>
+                            Answer: {{currentAnnotation.modelAnswer}}
+                            <br>
+                            <div>Smart robot's explanation: <span [innerHTML]="currentAnnotation.explanationHtml | safe"></span></div>
+                        </div>
+                    </p-header>
+                    <div style="overflow: hidden; text-align: center" 
+                    [style.width.px]="pixelateFilter.originalWidth" 
+                    [style.height.px]="pixelateFilter.originalHeight"  >                        
+                        <div [hidden]="blurStrategy === 'Downsample'" #imgBlurGaussian [ngStyle]="{ 
+                            'height': '85vh', 
+                            'background-image': 'url(/evaluation_dataset/v2_coco/training/images/' + currentAnnotation.imageName + ')',
+                            'background-repeat' : 'no-repeat', 
+                            'background-position' : 'top', 
+                            'background-size' : 'contain', 
+                            'filter': getBlurStyle(), 
+                            '-webkit-filter': getBlurStyle()
+                        }">
+                        </div>
+
+                        <img hidden id="sourceImage" src="/evaluation_dataset/v2_coco/training/images/{{currentAnnotation.imageName}}" (load)="applyPixelateFilter(true)" (error)="clearPixelateFilter()">
+
+                        <!-- <img *ngIf="isComponentMaskModality()" [hidden]="!showComponentOverlay" #componentOverlay 
+                        [style.left.px]="downSampleCanvas.offsetLeft" 
+                        [style.top.px]="downSampleCanvas.offsetTop" 
+                        [style.width.px]="downSampleCanvas.width" 
+                        [style.height.px]="downSampleCanvas.height"                         
+                        src="/evaluation_dataset/component_explanations/no_fill/{{currentAnnotation.question_id}}.png" style="position:absolute; z-index:1;"> -->
+
+                        <canvas #downSampleCanvas [hidden]="blurStrategy === 'Gaussian'" id="imgBlurDownsample" ></canvas>
+                        <!-- <canvas [hidden]="blurStrategy === 'Gaussian'" id="imgBlurDownsample" style="height: 85vh; height: 100%; width: 100%; object-fit: contain;"></canvas> -->
+                    </div>
+                </p-panel>
+            </div>
+        </div>
+    </div>    
+        
+</div>

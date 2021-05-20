@@ -1,0 +1,82 @@
+/* ==========================================================================
+Main page styles
+========================================================================== */
+
+.hipster {
+    display: inline-block;
+    width: 347px;
+    height: 497px;
+    background: url('../../content/images/hipster.png') no-repeat center top;
+    background-size: contain;
+}
+
+/* wait autoprefixer update to allow simple generation of high pixel density media query */
+@media only screen and (-webkit-min-device-pixel-ratio: 2),
+    only screen and (min--moz-device-pixel-ratio: 2),
+    only screen and (-o-min-device-pixel-ratio: 2/1),
+    only screen and (min-device-pixel-ratio: 2),
+    only screen and (min-resolution: 192dpi),
+    only screen and (min-resolution: 2dppx) {
+    .hipster {
+        background: url('../../content/images/hipster2x.png') no-repeat center top;
+        background-size: contain;
+    }
+}
+
+.statement {
+    display: block;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 12px 0 0 4.25%;
+    margin-bottom: 10px;
+}
+
+.likert {
+    list-style: none;
+    width: 100%;
+    margin: 0;
+    padding: 0 0 20px;
+    display: block;
+    border-bottom: 2px solid #efefef;
+}
+
+.likert:before {
+    content: '';
+    position: relative;
+    top: 11px;
+    left: 9.5%;
+    display: block;
+    background-color: #efefef;
+    height: 4px;
+    width: 78%;
+}
+
+.likert li {
+    display: inline-block;
+    width: 19%;
+    text-align: center;
+    vertical-align: top;
+}
+
+.likert li p-radiobutton {
+    display: block;
+    position: relative;
+    margin-top: -4px;
+}
+
+.likert li label {
+    width: 100%;
+}
+
+.strike {
+    position: relative;
+}
+
+.strike::after {
+    content: '';
+    border-bottom: 2px solid red;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+}

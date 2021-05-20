@@ -1,0 +1,164 @@
+/* after changing this file run 'yarn run webpack:build' */
+
+/***************************
+put Sass variables here:
+eg $input-color: red;
+****************************/
+
+// Override Boostrap variables
+@import 'bootstrap-variables';
+// Import Bootstrap source files from node_modules
+@import '~bootstrap/scss/bootstrap';
+/* ==========================================================================
+PrimeNG and it's third-party dependencies resources
+========================================================================== */
+
+@import '~@fortawesome/fontawesome-free/css/all.min.css';
+@import '~primeicons/primeicons.css';
+@import '~primeng/resources/primeng.min.css';
+// @import "~primeng-extensions/resources/primeng-extensions.min.css";
+@import '~primeng/resources/themes/nova-light/theme.css';
+@import '~quill/dist/quill.core.css';
+@import '~quill/dist/quill.snow.css';
+/* jhipster-needle-scss-add-vendor JHipster will add new css style */
+
+// body {
+//     // font-size: 16px !important;
+//     font-weight: 500 !important;
+// }
+
+// -------------- Button Styling-----------------------
+// Make icon only buttons round
+// .ui-button.ui-button-icon-only {
+//     -moz-border-radius: 50%;
+//     -webkit-border-radius: 50%;
+//     border-radius: 50%;
+//     width: 30px !important;
+//     height: 30px !important;
+// }
+
+// -------------- Button Styling-----------------------
+// -------------- TabView Styling-----------------------
+.ui-tabview {
+    padding: 0; // Remove extra padding around tabview
+}
+
+//Make header background the same color as the panel
+.ui-tabview .ui-tabview-nav {
+    background: #f6f7f9 0 0 repeat-x;
+    background: -moz-linear-gradient(top, #f6f7f9 0%, #ebedf0 100%);
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #f6f7f9), color-stop(100%, #ebedf0));
+    background: -webkit-linear-gradient(top, #f6f7f9 0%, #ebedf0 100%);
+    background: -o-linear-gradient(top, #f6f7f9 0%, #ebedf0 100%);
+    background: -ms-linear-gradient(top, #f6f7f9 0%, #ebedf0 100%);
+    background: linear-gradient(to bottom, #f6f7f9 0%, #ebedf0 100%);
+}
+
+// Hide extra border in header
+.ui-tabview.ui-tabview-top > .ui-tabview-nav {
+    border-top: none;
+    border-left: none;
+    border-right: none;
+}
+
+// Show border around entire tabview
+.ui-tabview.ui-widget-content {
+    border: 1px solid #d5d5d5;
+}
+
+// Inactive tabs styling
+.ui-tabview.ui-tabview-top > .ui-tabview-nav > li {
+    border-style: solid;
+    border-width: 1px 1px 4px 1px;
+    border-bottom-color: #f6f7f9;
+}
+
+// Make the active tab more obvious
+.ui-tabview .ui-tabview-nav > li.ui-state-active {
+    background-color: #ffffff;
+    border-bottom-color: rgb(81, 128, 206);
+    border-style: solid;
+    border-width: 1px 1px 4px 1px;
+}
+
+// -------------- TabView Styling-----------------------
+// Unbold treetable headers
+.ui-treetable-tablewrapper th {
+    font-weight: normal;
+}
+
+// Unbold table headers
+.ui-table th {
+    font-weight: normal;
+}
+
+// Tooltip text wrapping fix.
+.ui-tooltip .ui-tooltip-text {
+    // white-space: pre-wrap;
+    overflow-wrap: break-word;
+    max-width: 500px;
+}
+
+// Dialog mask is covering up the dialog in some instance. Push to the back for now
+.ui-dialog-mask {
+    z-index: 0 !important;
+}
+
+// // Make the dialog width responsive
+// .ui-dialog {
+//     width: 96% !important;
+//     min-height: 95% !important; // overflow: scroll;
+// }
+
+// Make the dialog height responsive.
+.ui-dialog-content.ui-widget-content {
+    max-height: 90vh;
+    overflow: auto;
+}
+
+// Table: Don't highlight sorted column
+.ui-table .ui-sortable-column.ui-state-highlight {
+    background-color: #ebedf0;
+    color: #1b1d1f;
+}
+
+//Table: Hide default sort icon. It visually distracting
+.pi-sort:before {
+    content: '';
+}
+
+//Fixes paginator when dealing with large numbers
+.ui-paginator .ui-paginator-page,
+.ui-paginator .ui-paginator-pages,
+.ui-paginator .ui-paginator-next,
+.ui-paginator .ui-paginator-last,
+.ui-paginator .ui-paginator-first,
+.ui-paginator .ui-paginator-prev,
+.ui-paginator .ui-paginator-current {
+    width: auto;
+    min-width: 1.5em;
+}
+
+//Fixes sorted column indicator being barely visible
+.ui-table .ui-sortable-column.ui-state-highlight .ui-sortable-column-icon {
+    color: #1b1d1f;
+}
+
+//Remove boostrap padding for labels
+label {
+    display: unset;
+    margin-bottom: unset;
+}
+
+.ui-orderlist-item {
+    padding: 0 0.857em !important;
+}
+
+.ui-orderlist .ui-orderlist-droppoint {
+    height: 9px;
+    list-style-type: none;
+}
+
+.ui-chkbox .ui-chkbox-box.ui-state-active {
+    border-color: black !important;
+}

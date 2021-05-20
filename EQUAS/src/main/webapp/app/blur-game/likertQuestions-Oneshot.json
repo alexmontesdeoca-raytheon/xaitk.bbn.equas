@@ -1,0 +1,18 @@
+[
+    {
+        "id": "0",
+        "question": "I think my feedback will help the robot, this time"
+    },
+    {
+        "id": "1",
+        "question": "I understand what I need to do to help the robot"
+    },
+    {
+        "id": "2",
+        "question": "The features help me understand how the robot thinks"
+    },
+    {
+        "id": "3",
+        "question": "The names of the features help me more than the reference images"
+    }
+]

@@ -1,0 +1,660 @@
+<p-toast position="top-center"></p-toast>
+
+<div *ngIf="!isAuthenticated()" style="padding: 16px;">
+    <!-- <div class="col-md-3">
+        <span class="hipster img-fluid rounded"></span>
+    </div> -->
+    <div class="col-md-9">
+        <!-- <h1 class="display-4" jhiTranslate="home.title">Welcome, Java Hipster!</h1> -->
+        <h1 class="display-4">Explainable QUestion Answering System (EQUAS)</h1>
+        <!-- <p class="lead" jhiTranslate="home.subtitle">This is your homepage</p> -->
+
+        <div [ngSwitch]="isAuthenticated()">
+            <div class="alert alert-success" *ngSwitchCase="true">
+                <span *ngIf="account" jhiTranslate="home.logged.message" translateValues="{username: '{{account.login}}'}"> You are logged in as user "{{account.login}}". </span>
+            </div>
+
+            <div class="alert alert-warning" *ngSwitchCase="false">
+                <!-- <span jhiTranslate="global.messages.info.authenticated.prefix">If you want to </span> -->
+                <span>If you already have account, click here to </span>
+                <a class="alert-link" (click)="login()" jhiTranslate="global.messages.info.authenticated.link">sign in</a>
+            </div>
+            <div class="alert alert-warning" *ngSwitchCase="false">
+                <span jhiTranslate="global.messages.info.register.noaccount">You don't have an account yet?</span>
+                <a class="alert-link" routerLink="register" jhiTranslate="global.messages.info.register.link">Register a new account</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<ng-template #questionHistoryTable>
+    <p-table [value]="vqaHistory.history" selectionMode="single" [(selection)]="vqaHistory.selectedHistory" dataKey="id">
+        <ng-template pTemplate="body" let-vqaBundle>
+            <tr [pSelectableRow]="vqaBundle">
+                <div class="ui-g-12" style="border: 1px solid #D5D5D5; padding: 8px; border-radius: 3px;">
+                    <div style="display:inline-grid;font-weight: bold;">
+                        <span>Question: {{vqaBundle.question}}</span>
+                        <span *ngIf="vqaBundle.answer && !vqaBundle.forceAnswer" style.color="{{answerColor(vqaBundle, false)}}">Predicted Answer: {{vqaBundle.answer}}</span>
+                        <span *ngIf="vqaBundle.answer && vqaBundle.forceAnswer">Selected Answer: {{vqaBundle.forceAnswer}}</span>
+                        <span *ngIf="vqaBundle.answer && vqaBundle.groundTruth" style.color="{{answerColor(vqaBundle, true)}}">Ground Truth: {{vqaBundle.groundTruth}}</span>
+                        <span *ngIf="!vqaBundle.answer" style.color="{{waitColor()}}">Waiting for model response</span>
+                    </div>
+
+                    <div *ngIf="vqaBundle.answer" style="float:right;">
+                        <p-button icon="fa fa-fw fa-thumbs-up" pTooltip="Agree" [styleClass]="vqaBundle.agree === true ? 'ui-button-success' : 'ui-button-secondary'" tooltipPosition="left" (onClick)="setAgreement($event, vqaBundle, true)"></p-button>
+                        <p-button icon="fa fa-fw fa-thumbs-down" pTooltip="Disagree" [styleClass]="vqaBundle.agree === false ? 'ui-button-danger' : 'ui-button-secondary'" tooltipPosition="left" (onClick)="setAgreement($event, vqaBundle, false)"></p-button>
+                        <p-button icon="fa fa-fw fa-cogs" pTooltip="Re-submit this question" tooltipPosition="left" (onClick)="resubmitQuestion($event, vqaBundle, '')"></p-button>
+                        <!-- <p-button icon="fa fa-fw fa-info-circle" pTooltip="Show Details" tooltipPosition="left" (onClick)="vqaBundle.showExpandedDetails = !vqaBundle.showExpandedDetails"></p-button> -->
+                        <br> {{getElapsedTime(vqaBundle)}} seconds
+                    </div>
+
+                    <div *ngIf="vqaBundle.answer && vqaBundle.showExpandedDetails" class="ui-g">
+                        <div class="ui-g-12 ui-md-4">
+                            <p-panel header="Grad-CAM Transparency">
+                                <div [ngStyle]="{ 'background-image': 'url(' + this.vqaHistory.imgUri + ')', 'background-size' : '100% 100%'}">
+                                    <img src="/evaluation_dataset/model_results/{{vqaBundle.id}}/{{selectedFilter}}.png" style="z-index:1; mix-blend-mode: multiply; height: 100%; width: 100%;">
+                                </div>
+                            </p-panel>
+                        </div>
+
+                        <div class="ui-g-12 ui-md-4">
+                            <p-panel header="Grad-CAM Heatmap">
+                                <img src="/evaluation_dataset/model_results/{{vqaBundle.id}}/{{selectedFilter}}.png" style="height: 100%; width: 100%; object-fit: contain;">
+                            </p-panel>
+                        </div>
+
+                        <div class="ui-g-12 ui-md-4">
+                            <p-panel header="Grad-CAM Overlay">
+                                <div [ngStyle]="{ 'background-image': 'url(' + this.vqaHistory.imgUri + ')', 'background-size' : '100% 100%'}">
+                                    <img src="/evaluation_dataset/model_results/{{vqaBundle.id}}/{{selectedFilter}}.png" style="z-index:1; mix-blend-mode: screen; height: 100%; width: 100%;">
+                                </div>
+                            </p-panel>
+                        </div>
+
+                        <div class="ui-g-12 ui-md-6">
+                            <p-panel header="Supporting Evidence">
+                                <!-- <p-tree [value]="filesTree0" [style]="{'width':'100%'}"></p-tree> -->
+                            </p-panel>
+                        </div>
+                        <div class="ui-g-12 ui-md-6">
+                            <p-panel header="Confidence / TBD">
+                                <div class="c100 p97 center">
+                                    <span>97%</span>
+                                    <div class="slice">
+                                        <div class="bar"></div>
+                                        <div class="fill"></div>
+                                    </div>
+                                </div>
+                            </p-panel>
+                        </div>
+
+                        <div class="ui-g-12 ui-md-12">
+                            <p-panel header="Similar Cases">
+                                <!-- <div style="display: flex; overflow-x: auto;">
+                                                    <img *ngFor="let number of [0,1,2,3,4,5,6,7]" src="{{this.vqaHistory.imgUri}}" style="margin-right:8px; max-height: 75px; height: 100%; width: 100%; object-fit: contain;">
+                                                </div> -->
+                                <div style="overflow-x: auto;">
+                                    <img src="/evaluation_dataset/net_dissection_data/conv5_4-0000.jpg" style="max-height: 100px;">
+                                </div>
+                            </p-panel>
+                        </div>
+
+                    </div>
+                </div>
+            </tr>
+        </ng-template>
+    </p-table>
+</ng-template>
+
+<ng-template #annotationTable>
+    <p-table [value]="vqaHistory.annotations" selectionMode="single" [(selection)]="vqaHistory.selectedAnnotation" dataKey="id">
+        <ng-template pTemplate="body" let-vqaBundle>
+            <tr [pSelectableRow]="vqaBundle">
+                <div class="ui-g-12" style="border: 1px solid #D5D5D5; padding: 8px; border-radius: 3px;">
+                    <div style="display:inline-grid;font-weight: bold;">
+                        <span>Question: {{vqaBundle.question}}</span>
+                        <span *ngIf="vqaBundle.answer" style.color="{{answerColor(vqaBundle, false)}}">Answer: {{vqaBundle.answer}}</span>
+                        <!-- <span *ngIf="vqaBundle.answer && vqaBundle.groundTruth" style.color="{{answerColor(vqaBundle, true)}}">Original Answer: {{vqaBundle.groundTruth}}</span>
+                                <span *ngIf="!vqaBundle.answer" style.color="{{waitColor()}}">Waiting for model response</span> -->
+                    </div>
+
+                    <div *ngIf="vqaBundle.answer" style="float:right;">
+                        <p-button icon="fa fa-fw fa-thumbs-up" pTooltip="Agree" [styleClass]="vqaBundle.agree === true ? 'ui-button-success' : 'ui-button-secondary'" tooltipPosition="left" (onClick)="setAgreement($event, vqaBundle, true)"></p-button>
+                        <p-button icon="fa fa-fw fa-thumbs-down" pTooltip="Disagree" [styleClass]="vqaBundle.agree === false ? 'ui-button-danger' : 'ui-button-secondary'" tooltipPosition="left" (onClick)="setAgreement($event, vqaBundle, false)"></p-button>
+                        <p-button icon="fa fa-fw fa-cogs" pTooltip="Re-submit this question" tooltipPosition="left" (onClick)="resubmitAnnotation($event, vqaBundle)"></p-button>
+                    </div>
+                </div>
+            </tr>
+        </ng-template>
+    </p-table>
+</ng-template>
+
+<ng-template #activeQuestion>
+    <div *ngIf="getCurrentSelectedQuestion()" style="margin:8px; border: 1px solid #D5D5D5; padding: 8px; border-radius: 3px;">
+        <!-- <div class="ui-grid">
+            <div class="ui-grid-col-10"></div>
+            <div class="ui-grid-col-2"></div>
+        </div> -->
+        <div style="display:inline-grid;font-weight: bold;">
+            <span>Question: {{getCurrentSelectedQuestion().question}}
+                <p-button *ngIf="!isGEpopup" icon="fa fa-chart-pie" pTooltip="Show global explanation for this question." tooltipPosition="right" (onClick)="displayGlobalExplanation(1, getCurrentSelectedQuestion().answer)"></p-button>
+            </span>
+
+            <a *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer" style.color="{{answerColor(getCurrentSelectedQuestion(), false)}}">
+                Predicted Answer:
+                {{getCurrentSelectedQuestion().answer}}
+                <p-button *ngIf="!isGEpopup" icon="fa fa-chart-pie" pTooltip="Show global explanation for this Model answer." tooltipPosition="right" (onClick)="displayGlobalExplanation(3, getCurrentSelectedQuestion().answer)"></p-button>
+            </a>
+            <!-- <a *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer && getCurrentSelectedQuestion().forceAnswer" (click)="setFilterToGradCam()">
+                Selected Answer:
+                {{getCurrentSelectedQuestion().forceAnswer}}
+            </a> -->
+            <span *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer && getCurrentSelectedQuestion().groundTruth" style.color="{{answerColor(getCurrentSelectedQuestion(), true)}}">
+                Ground Truth: {{getCurrentSelectedQuestion().groundTruth}}
+                <p-button *ngIf="!isGEpopup" icon="fa fa-chart-pie" pTooltip="Show global explanation for this top Turker answer." tooltipPosition="right" (onClick)="displayGlobalExplanation(2, getCurrentSelectedQuestion().groundTruth)"></p-button>
+            </span>
+            <span *ngIf="getCurrentSelectedQuestion() && !getCurrentSelectedQuestion().answer" style.color="{{waitColor()}}">Waiting for model response</span>
+        </div>
+
+
+        <!-- <div *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer" style="float:left;">
+            <span *ngFor="let bestAnswer of getCurrentSelectedQuestion().reply.bestAnswers">
+                {{bestAnswer.answer}}
+                <span style="font-weight: normal; font-size: smaller;">({{truncateNumber(bestAnswer.activation,3)}})</span>
+            </span>
+        </div> -->
+
+        <div *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer">
+            <div [innerHTML]="getCurrentSelectedQuestion().explanationHtml | safe" style="font-weight: bold;"></div>
+
+            <br>
+            <div *ngIf="getCurrentSelectedQuestion().componentExplanation" style="font-size: large;" >
+                <div *ngFor="let component of getCurrentSelectedQuestion().componentExplanation.slice(0, 10)" [style.color]="getRgb(component)" >
+                    <b>{{component.class}}</b>  : relevance = {{component.scoreSum | number}} 
+                </div>
+                <!-- <p-checkbox *ngIf="isComponentMaskModality()" [(ngModel)]="showComponentOverlay" binary="true" label="Show these components overlaid on image"></p-checkbox>    -->
+            </div>
+
+            <!-- <div [innerHTML]="getCurrentSelectedQuestion().componentExplanationHtml | safe" style="font-weight: bold;"></div> -->
+            
+            
+            <div style="max-width: 400px; margin-top: 8px;">
+                <p-table [value]="getCurrentSelectedQuestion().topN">
+                    <ng-template pTemplate="header">
+                            <tr>
+                                <th>Top 5 Model Answers</th>
+                                <th>Score</th>                                
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-item let-rowIndex="rowIndex">
+                            <tr >
+                                <td>{{item.answer}}</td>
+                                <td>{{item.score | number}}</td>
+                            </tr>
+                        </ng-template>
+                </p-table>
+            </div>             
+        </div>
+
+        <!-- <div *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer && getCurrentSelectedQuestion().naturalLanguage.annotatedText.length > 0">
+            <span *ngFor="let phrase of getCurrentSelectedQuestion().naturalLanguage.annotatedText; index as i; last as isLast">
+                <a *ngIf="phrase.neuronId !== -1" [escape]="false" (click)="setSelectedNeuron(findNeuron(phrase.neuronId))" [style.border-bottom]="this.selectedFilter.endsWith('_neuron_') && getSelectedNeuronId() === phrase.neuronId ? 'solid': 'none'" pTooltip="Activation: {{truncateNumber(findNeuron(phrase.neuronId).activation, 4)}} <br />Accuracy: {{truncateNumber(findNeuron(phrase.neuronId).accuracy, 4)}}<br /> (Click to view)">
+                    {{phrase.words}}</a>
+                <span *ngIf="phrase.neuronId === -1">
+                    {{phrase.words}}
+                </span>
+                <span *ngIf="isLast">.</span>
+            </span>
+
+        </div> -->
+    </div>
+</ng-template>
+<div *ngIf="isAuthenticated() && vqaHistory">
+    <p-sidebar [(visible)]="showQuestionHistorySideBar" modal="false" position="right" styleClass="ui-sidebar-md" [style]="{'overflow':'scroll'}">
+        <p-header>
+            <h2>
+                <i class="fa fa-fw fa-history"></i>
+                Question History ({{ this.vqaHistory.history.length }})
+            </h2>
+        </p-header>
+        <ng-container *ngTemplateOutlet="questionHistoryTable"></ng-container>
+    </p-sidebar>
+    <p-sidebar [(visible)]="showAnnotationSideBar" modal="false" position="right" styleClass="ui-sidebar-md" [style]="{'overflow':'scroll'}">
+        <p-header>
+            <h2>
+                <i class="fa fa-fw fa-users"></i>
+                Annotations ({{ this.vqaHistory.annotations.length }})
+            </h2>
+        </p-header>
+        <ng-container *ngTemplateOutlet="annotationTable"></ng-container>
+    </p-sidebar>
+
+    <p-dialog [(visible)]="showImageList" [modal]="true" draggable="false" resizable="false" dismissableMask="true" [style]="{'width': '96%', 'min-height': '95%'}">
+        <p-header>
+            <i class="far fa-image"></i>
+            Select an image
+        </p-header>
+        <p-dataView #imageDataView [value]="imageList.files" [paginator]="true" pageLinks="10" [rows]="30" [rowsPerPageOptions]="[10, 20, 30, 50, 100]" paginatorPosition="both" filterBy="name">
+            <p-header>
+                <div class="ui-helper-clearfix">
+                    <div class="ui-g">
+                        <div class="ui-g-12 ui-md-8">
+                            <i class="fa fa-search" style="margin:4px 4px 0 0"></i>
+                            <input type="search" pInputText placeholder="Filter by image name" (keyup)="imageDataView.filter($event.target.value); imageDataView.first=0">
+                            <span style="margin-right: 8px;">{{imageDataView.totalRecords}} of {{imageList.files.length}}</span>
+                        </div>
+                    </div>
+                </div>
+            </p-header>
+
+            <ng-template let-file pTemplate="listItem">
+                <a *ngIf="showImageList" style="height: 160px; width: 160px; padding:.5em" class="ui-g-12 ui-md-2" (click)="selectImage(imageList, file.name)">
+                    <img src="/{{imageList.folderUri}}/{{file.name}}" style="height: 100%; width: 100%;" pTooltip="{{file.name}}" tooltipPosition="top">
+                </a>
+            </ng-template>
+        </p-dataView>
+    </p-dialog>
+
+    <p-dialog [(visible)]="showGlobalExplanation" [responsive]="true" [blockScroll]="true" [modal]="true" [style]="{'width': '96%', 'min-height': '95%'}">
+        <p-header>
+            <i class="fas fa-chart-pie"></i>
+            Global Explanation
+        </p-header>
+        <div *ngIf="showGlobalExplanation">
+            <jhi-global-explanation [focusOnQuestion]="focusOnQuestion" [focusOnAnswer]="focusOnAnswer" [activeTabIndex]="globalExplanationActiveTab"></jhi-global-explanation>
+        </div>
+    </p-dialog>
+
+    <div class="ui-g-12 ui-md-5 ui-g-nopad">
+        <div class="ui-g">
+            <div class="ui-g-12 ui-md-12">
+                <!-- <p-panel>
+                    <p-header>
+                        <i class="far fa-image"></i>
+                        {{getCurrentImageName()}}
+                        <div style="float: right;">
+                            <p-button (onClick)="getPreviousVqaHistory()" icon="fa fa-fw fa-caret-left" pTooltip="Previous Image" tooltipPosition="top"></p-button>
+                            <p-button (onClick)="showImageList = true" icon="fa fa-fw fa-th" pTooltip="Pick image from list" tooltipPosition="top"></p-button>
+                            <p-button (onClick)="getRandomVqaHistory()" icon="fa fa-fw fa-random" pTooltip="Random Image" tooltipPosition="top"></p-button>
+                            <p-button (onClick)="getNextVqaHistory()" icon="fa fa-fw fa-caret-right" pTooltip="Next Image" tooltipPosition="top"></p-button>
+                        </div>
+                        <div #actualTarget></div>
+                    </p-header>
+                    <img *ngIf="!vqaHistory.selectedHistory || !showVqaHeatMap" src="{{this.vqaHistory.imgUri}}" style="max-height: 450px; height: 100%; width: 100%; object-fit: contain;">
+                    <div *ngIf="vqaHistory.selectedHistory && showVqaHeatMap" [ngStyle]="{ 'background-image': 'url(' + this.vqaHistory.imgUri + ')', 'background-size' : '100% 100%'}">
+                        <img src="/evaluation_dataset/model_results/{{vqaHistory.selectedHistory.id}}/{{selectedFilter}}.png" style="min-height: 450px; max-height: 450px; z-index:1; mix-blend-mode: screen; height: 100%; width: 100%;">
+                    </div>
+                </p-panel> -->
+                <p-panel>
+                    <p-header>
+                        <i class="far fa-image"></i>
+                        {{getCurrentImageName()}}
+                        <div style="float: right;">
+                            <p-button (onClick)="getPreviousVqaHistory()" icon="fa fa-fw fa-caret-left" pTooltip="Previous Image" tooltipPosition="top"></p-button>
+                            <p-button (onClick)="showImageList = true" icon="fa fa-fw fa-th" pTooltip="Pick image from list" tooltipPosition="top"></p-button>
+                            <p-button (onClick)="getRandomVqaHistory()" icon="fa fa-fw fa-random" pTooltip="Random Image" tooltipPosition="top"></p-button>
+                            <p-button (onClick)="getNextVqaHistory()" icon="fa fa-fw fa-caret-right" pTooltip="Next Image" tooltipPosition="top"></p-button>
+                        </div>
+                        <div #actualTarget></div>
+                        <!-- <p-splitButton [style]="{'float':'right'}" label="New Image" icon="fa fa-fw fa-refresh" (onClick)="getRandomVqaHistory()"></p-splitButton> -->
+                    </p-header>
+                    <!-- <img *ngIf="!vqaHistory.selectedHistory || !showVqaHeatMap" src="{{this.vqaHistory.imgUri}}" style="max-height: 450px; height: 100%; width: 100%; object-fit: contain;"> -->
+                    <!-- <div *ngIf="vqaHistory.selectedHistory && showVqaHeatMap" [ngStyle]="{ 'background-image': 'url(' + this.vqaHistory.imgUri + ')', 'background-size' : '100% 100%'}">
+                        <img src="/evaluation_dataset/model_results/{{vqaHistory.selectedHistory.id}}/{{selectedFilter}}.png" style="min-height: 450px; max-height: 450px; z-index:1; mix-blend-mode: screen; height: 100%; width: 100%;">
+                    </div> -->
+
+
+                    <!-- <div *ngIf="!vqaHistory.selectedHistory || !showVqaHeatMap" [ngStyle]="{ 'background-image': 'url(' + this.vqaHistory.imgUri + ')', 'background-repeat' : 'no-repeat', 'background-position' : 'center', 'background-size' : 'contain'}">
+                        <img src="{{this.vqaHistory.imgUri}}" style="max-height: 450px; z-index:1; mix-blend-mode: screen; height: 100%; width: 100%;">
+                    </div> -->
+
+                    <div [ngStyle]="{ 'height': '75vh', 'background-image': 'url(' + this.vqaHistory.imgUri + ')', 'background-repeat' : 'no-repeat', 'background-position' : 'center', 'background-size' : 'contain'}">
+                        <img *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer" src="/evaluation_dataset/model_results/{{getCurrentSelectedQuestion().id}}/component_explanation_no_fill.png" style="max-height: 75vh; z-index:1; height: 100%; width: 100%; object-fit: contain;">
+                        <!-- <img hidden id="sourceGS" *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer && getSelectedNeuronId() && selectedFilter=='vqa_gcam_gs_neuron_'" src="/evaluation_dataset/neuron_results/{{getCurrentImageNameNoExt()}}/{{selectedFilter}}{{getSelectedNeuronId()}}.png" (load)="applyThresholdFilter()" (error)="clearThresholdFilter()" style="max-height: 55vh; z-index:1; mix-blend-mode: multiply; height: 100%; width: 100%; object-fit: contain;">
+                        <canvas id="canvasThreshold" *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer && selectedFilter.startsWith('vqa_gcam_gs')" style="height: 100%; width: 100%; object-fit: contain;"></canvas>
+
+                        <img *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer && selectedFilter=='vqa_gcam_hm'" src="/evaluation_dataset/model_results/{{getCurrentSelectedQuestion().id}}/{{selectedFilter}}.png" style="max-height: 55vh; z-index:1; mix-blend-mode: screen; height: 100%; width: 100%; object-fit: contain;">
+                        <img *ngIf="getCurrentSelectedQuestion() && getCurrentSelectedQuestion().answer && getSelectedNeuronId() && selectedFilter=='vqa_gcam_hm_neuron_'" src="/evaluation_dataset/neuron_results/{{getCurrentImageNameNoExt()}}/{{selectedFilter}}{{getSelectedNeuronId()}}.png" style="max-height: 55vh; z-index:1; mix-blend-mode: screen; height: 100%; width: 100%; object-fit: contain;"> -->
+
+                        <img *ngIf="!getCurrentSelectedQuestion() || !selectedFilter" src="{{this.vqaHistory.imgUri}}" style="max-height: 75vh; height: 100%; width: 100%; object-fit: contain;">
+
+                    </div>
+                </p-panel>
+            </div>
+            <!-- <div class="ui-g-12 ui-md-12">
+                <p-panel>
+                    <p-header>
+                        <i class="fa fa-fw fa-adjust"></i>
+                        Explanation Filters
+                    </p-header>
+                    <div class="ui-grid">
+                        <div class="ui-grid-col-6">
+                            Transparency
+                            <br>
+                            <p-radioButton name="group1" [(ngModel)]="selectedFilter" value="vqa_gcam_gs" label="Grad-CAM "></p-radioButton>
+                            <br>
+                            <p-radioButton name="group1" [(ngModel)]="selectedFilter" value="vqa_gcam_gs_neuron_" label="Supporting Evidence"></p-radioButton>
+                            <br> Threshold ({{truncateNumber(thresholdFilter.level / 255 * 100, 0) }} %)
+                            <br>
+                            <p-slider [disabled]="!selectedFilter.startsWith('vqa_gcam_gs')" [style]="{'width':'100%','padding':'6px'}" [(ngModel)]="thresholdFilter.level" [min]="1" [max]="255" (onChange)="applyThresholdFilter()"></p-slider>
+                            Opacity ({{truncateNumber(thresholdFilter.opacity / 255 * 100, 0)}} %)
+                            <br>
+                            <p-slider [disabled]="!selectedFilter.startsWith('vqa_gcam_gs')" [style]="{'width':'100%','padding':'6px'}" [(ngModel)]="thresholdFilter.opacity" [min]="0" [max]="255" (onChange)="applyThresholdFilter()"></p-slider>
+                        </div>
+                        <div class="ui-grid-col-6">
+                            Heatmap
+                            <br>
+                            <p-radioButton name="group1" [(ngModel)]="selectedFilter" value="vqa_gcam_hm" label="Grad-CAM"></p-radioButton>
+                            <br>
+                            <p-radioButton name="group1" [(ngModel)]="selectedFilter" value="vqa_gcam_hm_neuron_" label="Supporting Evidence"></p-radioButton>
+                        </div>
+                    </div>
+
+
+                </p-panel>
+            </div> -->
+            <!-- <div class="ui-g-6 ui-md-12">
+                <p-panel>
+                    <p-header>
+                        <i class="fa fa-fw fa-edit"></i>
+                        Classification Editor
+                    </p-header>
+                    <p-button icon="fa fa-fw fa-crosshairs" label="Classify new object"></p-button>
+                    <p-button icon="fa fa-fw fa-crop" label="Edit selected object"></p-button>
+                    <p-button icon="fa fa-fw fa-comment" label="Add Note"></p-button>
+                </p-panel>
+            </div> -->
+            <!-- <div class="ui-g-12 ui-md-12">
+                <p-panel header="Alternative Explanation">
+                </p-panel>
+            </div> -->
+
+        </div>
+    </div>
+    <div class="ui-g-12 ui-md-7">
+        <p-panel *ngIf="!guiOptions.tabviewLayout">
+            <p-header>
+                <i class="fa fa-fw fa-question-circle"></i>
+                Ask a question
+                <div *ngIf="!isGEpopup" style="float: right;">
+                    <p-button icon="fa fa-fw fa-history" pTooltip="Show Question History" tooltipPosition="left" (onClick)="showQuestionHistorySideBar = true"></p-button>
+                    <p-button icon="fa fa-fw fa-users" pTooltip="Show Annotations" tooltipPosition="left" (onClick)="showAnnotationSideBar = true"></p-button>
+                </div>
+            </p-header>
+            <span class="ui-float-label" style="margin: 8px;">
+                <input [(ngModel)]="questionText" id="float-input" type="text" pInputText style="width:100%;" (keydown.enter)="submitQuestion()">
+                <label for="float-input">What's your question?</label>
+            </span>
+            <div style="overflow:auto;">
+                <ng-container *ngTemplateOutlet="activeQuestion"></ng-container>
+            </div>
+        </p-panel>
+
+        <p-tabView (onChange)="tabChanged($event)" *ngIf="guiOptions.tabviewLayout">
+            <p-tabPanel leftIcon="fa-question-circle" header="Ask a question">
+                <span class="ui-float-label" style="margin-top: 8px; margin-bottom: 8px;">
+                    <input [(ngModel)]="questionText" id="float-input" type="text" pInputText style="width:100%;" (keydown.enter)="submitQuestion()">
+                    <label for="float-input">What's your question?</label>
+                </span>
+                <div style="height: 70vh; overflow:auto;">
+                    <ng-container *ngTemplateOutlet="activeQuestion"></ng-container>
+                </div>
+            </p-tabPanel>
+
+            <p-tabPanel leftIcon="fa-history" header="Question History ({{ this.vqaHistory.history.length }})">
+                <p-header>
+                    <!-- <div style="float: right;">
+                            <p-selectButton [options]="questionTypeOptions" [(ngModel)]="questionTypeSelection" multiple="multiple"></p-selectButton>
+                        </div> -->
+                    <!-- <p-splitButton [style]="{'float':'right'}" label="New Image" icon="fa fa-fw fa-refresh" (onClick)="getRandomVqaHistory()"></p-splitButton> -->
+                </p-header>
+                <span class="ui-float-label" style="margin-top: 8px; margin-bottom: 8px;">
+                    <input [(ngModel)]="questionText" id="float-input" type="text" pInputText style="width:100%;" (keydown.enter)="submitQuestion()">
+                    <label for="float-input">What's your question?</label>
+                </span>
+                <div style="height: 70vh; overflow:auto;">
+                    <ng-container *ngTemplateOutlet="questionHistoryTable"></ng-container>
+                </div>
+            </p-tabPanel>
+            <p-tabPanel leftIcon="fa-users" header="Annotations ({{ this.vqaHistory.annotations.length }})">
+                <div style="height: 70vh; overflow:auto;">
+                    <ng-container *ngTemplateOutlet="annotationTable"></ng-container>
+                </div>
+            </p-tabPanel>
+        </p-tabView>
+
+    </div>
+
+    <div class="ui-g-12 ui-md-7">
+        <p-panel>
+            <p-header>
+                <i class="far fa-copy"></i>
+                Similar Cases
+            </p-header>
+            <div style="overflow-x: auto;">
+                <div style="display: flex; overflow-x: auto;">
+                <!-- <div (click)="showSimilarCaseDialog = true" style="cursor:pointer; display: flex; overflow-x: auto;"> -->
+                    <div *ngFor="let vqaBundle of similarCases.slice(0,10);">
+                        <!-- <span>Activation: {{getSimilarCaseActivation(number)}}</span> -->
+                        <a (click)="selectImage(imageList, vqaBundle.img + '.jpg')"> 
+                            <img  src="{{getCocoImageUrl(vqaBundle.img)}}" style="margin-right:8px; height: 175px;">
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <p-dialog *ngIf="showSimilarCaseDialog" [(visible)]="showSimilarCaseDialog" [modal]="true" draggable="false" resizable="false" dismissableMask="true" [style]="{'width': '96%', 'min-height': '95%'}">
+                <p-header>
+                    <i class="far fa-copy"></i>
+                    Similar Cases ({{similarCases.length}})
+                </p-header>
+                <p-tabView>
+                    <p-tabPanel header="Similar Images">
+                        <p-table #similarCasesTable [value]="similarCases" [autoLayout]="true" [scrollable]="true" [scrollHeight]="'calc(100vh - 325px)'" [style]="{width:'100%'}" [paginator]="true" pageLinks="10" paginatorPosition="top" [rows]="100" [rowsPerPageOptions]="[10, 20, 50, 100, 200]">
+                            <ng-template pTemplate="caption">
+                                <div class="ui-g" *ngIf="similarCases">
+                                    <div class="ui-g-6 ui-md-8" style="text-align: left">
+                                        <i class="fa fa-search" style="margin:4px 4px 0 0"></i>
+                                        <input type="text" [(ngModel)]="similarCasesQuestion" pInputText size="100" placeholder="Whats your question?" (keydown.enter)="bulkSubmit(similarCasesTable.rows, similarCasesTable.first)" style="width:30%">
+                                        <p-progressBar [value]="(bulkProgressCount /  similarCases.length) * 100  | number:'1.0-0'"></p-progressBar>
+                                    </div>
+                                </div>
+                            </ng-template>
+
+                            <!-- <ng-template pTemplate="header">
+                                            <tr>
+                                                <th pSortableColumn="datasetName">
+                                                    Image
+                                                    <p-sortIcon field="datasetName"></p-sortIcon>
+                                                </th>
+                                                <th pSortableColumn="label">
+                                                    Name
+                                                    <p-sortIcon field="label"></p-sortIcon>
+                                                </th>                        
+                                            </tr>
+                                        </ng-template> -->
+
+                            <ng-template pTemplate="body" let-vqaBundle>
+                                <tr>
+                                    <td>
+                                        <img src="{{getCocoImageUrl(vqaBundle.img)}}" style="margin-right:8px; width: 100%; height: 300px; object-fit: contain;">
+                                        <!-- <img src="/evaluation_dataset/model_results/{{similarCasesCache[vqaBundle.img].id}}/faithful_seg.jpg" style="margin-right:8px; width: 100%; height: 300px; object-fit: contain;"> -->
+                                    </td>
+                                    <td style="font-weight: bold;">
+                                        Image Id: {{vqaBundle.img}}
+                                        <div>
+                                            <!-- <pre>{{similarCasesCache[imgId] | json}}</pre> -->
+                                            <div>Question: {{vqaBundle.question}}</div>
+                                            <div>Answer: {{vqaBundle.answer}}</div>
+                                            <div>Explanation:
+                                                <!-- <span [innerHTML]="similarCasesCache[vqaBundle.img].explanationHtml | safe"></span> -->
+                                                <span [innerHTML]="vqaBundle.explanation | safe"></span>
+                                            </div>
+
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style="width: 400px">
+                                            <p-table [value]="vqaBundle.topN">
+                                                <ng-template pTemplate="header">
+                                <tr>
+                                    <th>Top 5 Model Answers</th>
+                                    <th>Score</th>
+                                    <!-- <th>Delta</th> -->
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="body" let-item let-rowIndex="rowIndex">
+                                <tr>
+                                    <td>{{item.answer}}</td>
+                                    <td>{{item.score | number}}</td>
+                                    <!-- <td *ngIf="rowIndex===0">0</td>
+                                                                    <td *ngIf="rowIndex>0">{{similarCasesCache[vqaBundle.img].topN[rowIndex -1].score - similarCasesCache[vqaBundle.img].topN[rowIndex].score  | number}}</td> -->
+                                </tr>
+                            </ng-template>
+                        </p-table>
+    </div>
+
+    </td>
+    </tr>
+    </ng-template>
+    </p-table>
+    </p-tabPanel>
+    <p-tabPanel *ngIf="rejectedAlternatives.length > 0" header="Rejected Alternative ({{rejectedAlternatives.length}})">
+        <p-table #rejectedAlternativesTable [value]="rejectedAlternatives" [autoLayout]="true" [scrollable]="true" [scrollHeight]="'calc(100vh - 325px)'" [style]="{width:'100%'}" [paginator]="true" pageLinks="10" paginatorPosition="top" [rows]="100" [rowsPerPageOptions]="[10, 20, 50, 100, 200]">
+            <ng-template pTemplate="caption">
+                <div class="ui-g" *ngIf="rejectedAlternatives">
+                    <div class="ui-g-6 ui-md-8" style="text-align: left">
+                        <i class="fa fa-search" style="margin:4px 4px 0 0"></i>
+                        <input type="text" [(ngModel)]="similarCasesQuestion" pInputText size="100" placeholder="Whats your question?" (keydown.enter)="bulkSubmit(similarCasesTable.rows, similarCasesTable.first)" style="width:30%">
+                    </div>
+                </div>
+            </ng-template>
+
+            <!-- <ng-template pTemplate="header">
+                                            <tr>
+                                                <th pSortableColumn="datasetName">
+                                                    Image
+                                                    <p-sortIcon field="datasetName"></p-sortIcon>
+                                                </th>
+                                                <th pSortableColumn="label">
+                                                    Name
+                                                    <p-sortIcon field="label"></p-sortIcon>
+                                                </th>                        
+                                            </tr>
+                                        </ng-template> -->
+
+            <ng-template pTemplate="body" let-vqaBundle>
+                <tr>
+                    <td>
+                        <img src="{{getCocoImageUrl(vqaBundle.img)}}" style="margin-right:8px; width: 100%; height: 300px; object-fit: contain;">
+                        <!-- <img src="/evaluation_dataset/model_results/{{similarCasesCache[vqaBundle.img].id}}/faithful_seg.jpg" style="margin-right:8px; width: 100%; height: 300px; object-fit: contain;"> -->
+                    </td>
+                    <td style="font-weight: bold;">
+                        Image Id: {{vqaBundle.img}}
+                        <div>
+                            <!-- <pre>{{similarCasesCache[imgId] | json}}</pre> -->
+                            <div>Question: {{vqaBundle.question}}</div>
+                            <div>Answer: {{vqaBundle.answer}}</div>
+                            <div>Explanation:
+                                <!-- <span [innerHTML]="similarCasesCache[vqaBundle.img].explanationHtml | safe"></span> -->
+                                <span [innerHTML]="vqaBundle.explanation | safe"></span>
+                            </div>
+
+                        </div>
+                    </td>
+                    <td>
+                        <div style="width: 400px">
+                            <p-table [value]="vqaBundle.topN">
+                                <ng-template pTemplate="header">
+                <tr>
+                    <th>Top 5 Model Answers</th>
+                    <th>Score</th>
+                    <!-- <th>Delta</th> -->
+                </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-item let-rowIndex="rowIndex">
+                <tr>
+                    <td>{{item.answer}}</td>
+                    <td>{{item.score | number}}</td>
+                    <!-- <td *ngIf="rowIndex===0">0</td>
+                                                                    <td *ngIf="rowIndex>0">{{similarCasesCache[vqaBundle.img].topN[rowIndex -1].score - similarCasesCache[vqaBundle.img].topN[rowIndex].score  | number}}</td> -->
+                </tr>
+            </ng-template>
+        </p-table>
+</div>
+
+</td>
+</tr>
+</ng-template>
+</p-table>
+</p-tabPanel>
+
+</p-tabView>
+<!-- <div style="overflow-x: auto;">
+                    <img style="height: 400px;" src="/evaluation_dataset/net_dissection_data/{{getSupportingEvidence(getCurrentSelectedQuestion()).selectedNode.data.imageryFilename}}">
+                </div> -->
+<!-- <p-virtualScroller [value]="similarCases" scrollHeight="80vh" [itemSize]="300" [rows]="10">
+                    <ng-template pTemplate="item" let-item let-i="index">
+                        <div class="ui-g car-item">                            
+                            <div class="ui-g-12 ui-md-4">
+                                <img src="{{getCocoImageUrl(item)}}" style="margin-right:8px; height: 300px;">
+                            </div>
+                            <div class="ui-g-12 ui-md-2">
+                                <div style="font-size: 24px; text-align: center; padding-top: 48px">{{i}}</div>
+                            </div>
+                            <div class="ui-g-12 ui-md-6">
+                                <div class="ui-g">
+                                    <div class="ui-g-2 ui-sm-6">Name: </div>
+                                    <div class="ui-g-10 ui-sm-6">{{item}}</div>
+                        
+                                    <div class="ui-g-2 ui-sm-6">Question: </div>
+                                    <div class="ui-g-10 ui-sm-6">2</div>
+                        
+                                    <div class="ui-g-2 ui-sm-6">Answer: </div>
+                                    <div class="ui-g-10 ui-sm-6">3</div>
+                        
+                                    <div class="ui-g-2 ui-sm-6">Explanation: </div>
+                                    <div class="ui-g-10 ui-sm-6">4</div>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-template>
+                </p-virtualScroller> -->
+
+<!-- selectionMode="single" [(selection)]="selectedItem" sortMode="single"
+                    (onRowSelect)="itemSelectedEvent.emit($event.data)" (onRowUnselect)="itemSelectedEvent.emit(undefined)" -->
+
+
+
+</p-dialog>
+</p-panel>
+</div>
+<!-- <div class="ui-g-12 ui-md-6">
+        <p-panel header="Classification Editor">
+            <p-button icon="fa fa-fw fa-crosshairs" label="Classify new object"></p-button>
+            <p-button icon="fa fa-fw fa-crop" label="Edit selected bject"></p-button>
+            <p-button icon="fa fa-fw fa-comment" label="Add Note"></p-button>
+        </p-panel>
+        <p-panel header="Alternative Explanation">
+        </p-panel>
+        <p-panel header="Similar Cases">
+        </p-panel>
+    </div> -->
+<!-- <div class="ui-g-12 ui-md-6">
+        <p-panel header="Classification Editor">
+            <p-button icon="fa fa-fw fa-crosshairs" label="Classify new object"></p-button>
+            <p-button icon="fa fa-fw fa-crop" label="Edit selected bject"></p-button>
+            <p-button icon="fa fa-fw fa-comment" label="Add Note"></p-button>
+        </p-panel>
+        <p-panel header="Alternative Explanation">
+        </p-panel>
+        <p-panel header="Similar Cases">
+        </p-panel>
+    </div> -->
+<!-- <div class="ui-g-12 ui-md-6">
+        <p-panel header="Assessment">
+            <p-tree [value]="filesTree0"></p-tree>
+        </p-panel>
+    </div> -->
+</div>

@@ -1,0 +1,32 @@
+version: '2.3'
+services:    
+    xai-hiecoattenvqa:
+        container_name: xai-hiecoattenvqa
+        image: xai-hiecoattenvqa
+        runtime: nvidia
+        build: HieCoAttenVQA
+        ports:
+            - 8088:8088 # VQA
+            # - 8089:8089 # NLG
+            - 5902:5901 # VNC
+            - 6902:6901 # noVNC
+        volumes:            
+            - ../evaluation_dataset:/evaluation_dataset
+            - ../models/HieCoAttenVQA:/root/HieCoAttenVQA
+    xai-faithful:
+        container_name: xai-faithful
+        image: xai-faithful
+        runtime: nvidia
+        build: faithful
+        ports:
+            - 8290:8290 # VQA            
+            - 5901:5901 # VNC
+            - 6901:6901 # noVNC
+        volumes:            
+            - ../evaluation_dataset:/evaluation_dataset
+            - ../models/faithful_explanation:/faithful/faithful_explanation
+            - ../models/faithful_explanation_data:/faithful/faithful_explanation_data
+    
+volumes:
+    evaluation_dataset:
+        driver: local

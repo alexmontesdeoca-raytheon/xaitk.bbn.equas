@@ -1,0 +1,27 @@
+# Sizeable model data, backed up elsewhere (outside Git)
+
+component_explanations/
+net_dissection_single_images/
+net_dissection_data/
+neuron_results/
+
+
+# Run-time caching artifacts
+
+model_results/
+
+fe_ge_results/seg/
+fe_ge_results/seg_n/
+fe_ge_results/seg_png/
+
+
+v2_coco/training/images/
+v2_coco/validation/images/
+v2_coco/testing/images/
+
+one_shot/saliency_map/
+one_shot/image/
+one_shot_data/
+
+one_shot_v3/
+fgvc-aircraft-2013b/

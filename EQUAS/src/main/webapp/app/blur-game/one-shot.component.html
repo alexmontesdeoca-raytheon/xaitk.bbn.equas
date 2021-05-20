@@ -1,0 +1,350 @@
+<style>
+    .pop {
+        width: 100%;
+        border: 1px solid #c9c9c9;
+        display: flex;
+        font-size: 14px;
+        font-weight:bold;
+        padding: 1px;
+    }
+
+    /* Animate items as they're being sorted. */
+    .cdk-drop-list-dragging .cdk-drag {
+        transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+    }
+
+    /* Animate an item that has been dropped. */
+    .cdk-drag-animating {
+        transition: transform 300ms cubic-bezier(0, 0, 0.2, 1);
+    }
+</style>
+<ng-template #grade>
+    <div style="font-size: 18px; font-weight: bold;">
+        <div>
+            <div>
+                Your grade for this image / list:  
+                <span style= "font-size: 24px; background-color: #212529; border-radius: 4px; padding: 4px;">
+                    <span *ngIf="trialScore >= gradeScale[0]" style="color: #3CE91A;" >A <i class="fas fa-laugh"></i></span>
+                    <span *ngIf="trialScore >= gradeScale[1] && trialScore < gradeScale[0]" style="color: #77EA02;" >B <i class="fas fa-smile"></i></span>
+                    <span *ngIf="trialScore >= gradeScale[2] && trialScore < gradeScale[1]" style="color: #F7D701;" >C <i class="fas fa-meh"></i></span>
+                    <span *ngIf="trialScore >= gradeScale[3] && trialScore < gradeScale[2]" style="color: #F67D01;" >D <i class="fas fa-grimace"></i></span>
+                    <span *ngIf="trialScore < gradeScale[3]" style="color: #F60002;" >F <i class="fas fa-frown"></i></span>
+                </span>                            
+            </div>
+        </div>
+        <br>
+        <div>
+            Your cumulative grade:  
+            <span style= "font-size: 24px; background-color: #212529; border-radius: 4px; padding: 4px; ">
+                <span *ngIf="getUsersScore() >= gradeScale[0]" style="color: #3CE91A;" >A <i class="fas fa-laugh"></i></span>
+                <span *ngIf="getUsersScore() >= gradeScale[1] && getUsersScore() < gradeScale[0]" style="color: #77EA02;" >B <i class="fas fa-smile"></i></span>
+                <span *ngIf="getUsersScore() >= gradeScale[2] && getUsersScore() < gradeScale[1]" style="color: #F7D701;" >C <i class="fas fa-meh"></i></span>
+                <span *ngIf="getUsersScore() >= gradeScale[3] && getUsersScore() < gradeScale[2]" style="color: #F67D01;" >D <i class="fas fa-grimace"></i></span>
+                <span *ngIf="getUsersScore() < gradeScale[3]" style="color: #F60002;" >F <i class="fas fa-frown"></i></span>
+            </span>
+        </div>
+    </div>
+</ng-template>
+<p-toast position="center" [baseZIndex]="99999"></p-toast>
+<p-confirmDialog header="Confirmation" icon="pi pi-exclamation-triangle"></p-confirmDialog>
+<p-confirmDialog header="" key="Info" icon="pi pi-exclamation-triangle"></p-confirmDialog>
+<div *ngIf="showProgressSpinner" style="text-align: center;
+            z-index: 10000;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 100%;
+            background-color: #69696987;">
+    <p-progressSpinner ></p-progressSpinner>
+</div>
+
+<p-dialog [(visible)]="showPreamble"(onHide)="startSession();" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="turkerAcceptedAssigment()" [style]="{'z-index' : '995', 'max-width' : '900px'}">
+    <p-header>
+        <i class="fas fa-info-circle"></i>
+        Instructions
+        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+            <p-button (onClick)="resetWorkerId()" icon="fas fa-fw fa-undo" label="Reset worker Id ({{getWorkerId()}})" tooltipPosition="left"></p-button>
+        </span>
+    </p-header>
+    <div>
+        <h4>
+            <!-- Blur Game Instructions -->
+            <div>
+                Welcome to the One-Shot Picture game.
+                <br>
+                <br>
+                <div>
+                    You will help a robot learn something brand new in this game.
+                    <br>
+                    You will get six pictures to look at.
+                    <ul>
+                        <li>Choose the one you think provides the best view to learn from.</li>
+                        <li>The robot will show you a list of things it can see in that picture.</li>
+                        <li>Sort those words from most important (on top) to least important (on bottom).</li>
+                        <li>You can also remove any words (by putting them below the line) that you think are not useful for the robot to learn.</li>
+                        <li>The robot will tell you how well it learned the new concept from your word list and move on to the next example.</li>
+                    </ul>  
+                </div>
+                You have to complete (20) rounds and you can only do (1) HIT.
+            </div>            
+        </h4>
+    </div>
+    <p-footer *ngIf="turkerAcceptedAssigment()">
+        <div style="text-align: center;">
+            <button type="button" pButton icon="pi pi-check" (click)="showPreamble=false; startSession();" label="Close"></button>
+        </div>
+    </p-footer>
+</p-dialog>
+
+<p-dialog [(visible)]="showGameComplete" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="false" [style]="{'z-index' : '999', 'max-width' : '900px'}">
+    <p-header>
+        <i class="fas fa-trophy"></i>
+        Congrats!!!
+        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+            <p-button (onClick)="resetWorkerId()" icon="fas fa-fw fa-undo" label="Reset worker Id ({{getWorkerId()}})" tooltipPosition="left"></p-button>
+        </span>
+    </p-header>
+    <div>
+        <h4>
+             You have completed this assignment.
+             <br>
+             <br>
+             You can now close your browser.
+        </h4>
+        <br>
+        <div style="font-size: 18px; font-weight: bold;">
+            Your overall grade:  
+            <span style= "font-size: 24px; background-color: #212529; border-radius: 4px; padding: 4px; ">
+                <span *ngIf="getFinalScore() >= gradeScale[0]" style="color: #3CE91A;" >A <i class="fas fa-laugh"></i></span>
+                <span *ngIf="getFinalScore() >= gradeScale[1] && getFinalScore() < gradeScale[0]" style="color: #77EA02;" >B <i class="fas fa-smile"></i></span>
+                <span *ngIf="getFinalScore() >= gradeScale[2] && getFinalScore() < gradeScale[1]" style="color: #F7D701;" >C <i class="fas fa-meh"></i></span>
+                <span *ngIf="getFinalScore() >= gradeScale[3] && getFinalScore() < gradeScale[2]" style="color: #F67D01;" >D <i class="fas fa-grimace"></i></span>
+                <span *ngIf="getFinalScore() < gradeScale[3]" style="color: #F60002;" >F <i class="fas fa-frown"></i></span>
+            </span>
+        </div>
+    </div>   
+    
+</p-dialog>
+
+<p-dialog [(visible)]="showAlreadyParticipated" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="false" [style]="{'z-index' : '999', 'max-width' : '900px'}">
+    <p-header>
+        <i class="far fa-frown"></i>
+        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+            <p-button (onClick)="resetWorkerId()" icon="fas fa-fw fa-undo" label="Reset worker Id ({{getWorkerId()}})" tooltipPosition="left"></p-button>
+        </span>
+    </p-header>
+    <div style="margin: 15px;">
+        <h4>                      
+            Sorry. You will not be able to complete this HIT because you have already participated in a previous EQUAS-2 experiment.             
+            <br>
+            <br>
+            You can now close your browser.
+            <br>
+        </h4>        
+    </div>   
+</p-dialog>
+
+<div *ngIf="loadComplete && !showGameComplete">
+        <div class="ui-g-12 ui-md-2 ui-g-nopad">
+                <div class="ui-g">
+                    <div class="ui-g-12 ui-md-12">
+                        <p-panel >
+                            <p-header>
+                                <i class="far fa-images"></i>
+                                Your Image Options
+                            </p-header>
+                           <div *ngFor="let annotation of blurQuestion.annotations" [style.cursor]="allowImageSelection() ? 'pointer' : 'not-allowed'" [style.opacity]="allowImageSelection() || currentAnnotation === annotation ? 1 : .4" >
+                               <div [style.pointer-events]="allowImageSelection() ? 'auto' : 'none'" (click)="currentAnnotation = annotation; calcSimilaritryScore(); selectedComponent = undefined" style="border:5px solid; cursor: pointer;" [style.border-color]="annotation === currentAnnotation? 'red' : 'white'">
+                                    <img src="/evaluation_dataset/v2_coco/training/images/{{annotation.imageName}}"  style="z-index:1; max-height: 100px; width: 100%; object-fit: contain">
+                               </div>                                
+                           </div>
+                        </p-panel>
+                    </div>
+                </div>
+            </div>
+     <div class="ui-g-12 ui-md-5 ui-g-nopad">
+        <div class="ui-g">
+            <div class="ui-g-12 ui-md-12">
+                <p-panel>
+                    <p-header>
+                        <i class="far fa-image"></i>
+                        <!-- {{currentAnnotation.question_id}} -->
+                        <span>Selected Image</span>
+                        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+                            <!-- Blurriness : {{blurAmount}}% -->
+                            <div style="float: right; text-align: center;">
+                                    <a href="./#/global-explanation/{{currentAnnotation.question_id}}/view" target="_blank" pTooltip="Open in a new browser tab.">
+                                        {{currentAnnotation.question_id}} 
+                                    </a>
+                                </div>
+                        </span>
+                        
+                    </p-header>
+                    <div style="overflow: hidden; text-align: center" [ngStyle]="{ 
+                        'max-height': '85vh'
+                        }">
+                        <img id="sourceImage" src="/evaluation_dataset/v2_coco/training/images/{{currentAnnotation.imageName}}" (load)="showProgressSpinner=false;" style="max-height: 85vh; z-index:1; height: 100%; width: 100%; object-fit: contain;">
+                    </div>
+                    <div *jhiHasAnyAuthority="'ROLE_ADMIN'">
+                        Levenshtein distance: {{levenshtein}}
+                        <div>
+                            Kendall’s tau [-1 to 1]: {{kendallsTauA | number : '1.2-2'}}
+                        </div>
+                        <div>
+                            Trial Score [0 to 100]: {{trialScore | number : '1.2-2'}}                               
+                        </div>
+                        <div>
+                            Cumulative score [0 to 100]: {{getUsersScore() | number : '1.2-2'}}
+                        </div>  
+                        <ng-container *ngTemplateOutlet="grade;"></ng-container>                               
+                    </div>
+                </p-panel>
+            </div>
+        </div>
+    </div>
+    <div class="ui-g-12 ui-md-5">
+        <p-panel>
+            <p-header>
+                <i class="fa fa-fw fa-list"></i>
+                <p-button *ngIf="testLoopTimeout" (onClick)="stopTest()" icon="fa fa-fw fa-stop-circle" pTooltip="Stop e2e Test" tooltipPosition="left"></p-button>                
+                Round: {{getCompletedTrialCount()}} of {{blurQuestion.maxTrials}}
+            </p-header>           
+            <h4 style="display: flex;" *ngIf="!isNoModality()">
+               
+                <div style="align-self: center;">
+                   
+                    <div *ngIf="isComponentModality() || isComponentMaskModality()">
+                       
+                        <p-button styleClass="ui-button-warning"  icon="fas fa-fw fa-info-circle"  (onClick)="showPreamble=true;" label="Show Instructions"></p-button>
+                        <br>
+                        <br>
+                        <div *ngIf="!imageChosen">
+                            1) Select the image out of the 6 options on the left that you think best represents <b>{{getCategory()}}</b>. <br><br>2) Then click this button
+                            <br>
+                            <p-button styleClass="ui-button-primary" icon="fas fa-fw fa-thumbs-up"  (onClick)="chooseThisImage()" label="I choose this image"></p-button>
+                            <br>
+                            <br>
+                            <br>
+                        </div> 
+                        
+                        <div *ngIf="imageChosen && !isGamePaused()">
+                            3) Now sort the list of items below in the order that you think would be most important for a Robot to learn about <b>{{getCategory()}}</b>.
+                            <br>
+                            <br>
+                            <span style="font-weight: bold; font-size: 16px;">
+                                (Drag and drop the items in the list below to re-order them)                            
+                            </span>
+                            <div style="display: flex">
+                                <div cdkDropList [cdkDropListData]="currentAnnotation.userSortedFeatures" #firstList="cdkDropList" (cdkDropListDropped)="drop($event); calcSimilaritryScore();">
+                                    <div  *ngFor="let component of currentAnnotation.userSortedFeatures; let i = index" class="pop" cdkDrag>
+                                        #{{i + 1}}&nbsp;&nbsp;&nbsp;&nbsp;<span [class]="isBelowExcluded(component) ? 'strike' : ''" >{{component.class}}</span>
+                                    </div>
+                                </div>
+                            </div>              
+                            <!-- <p-orderList [value]="currentAnnotation.userSortedFeatures" (onReorder)="calcSimilaritryScore()" [(selection)]="selectedComponent" [listStyle]="{'height':'450px'}"  dragdrop="true" >
+                                <ng-template let-component pTemplate="item">
+                                    <div class="ui-helper-clearfix">
+                                        <span [class]="isBelowExcluded(component) ? 'strike' : ''" >{{component.class}}</span>
+                                    </div>
+                                </ng-template>
+                            </p-orderList> -->
+                        </div>                        
+                    </div>
+                </div>                
+            </h4>
+
+            <br *ngIf="!isGamePaused()">           
+            <div style="display: inline-block;">
+                <div *ngIf="imageChosen && !isNoModality() && !isMentalModeling() && !isGamePaused() && !showProgressSpinner" style="font-size: 24px;">
+                    <div>
+                        4) After sorting the list click this button
+                        <br>
+                        <p-button id="bgAccept" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="submitOneShot()" icon="far fa-fw fa-check-circle" label="Submit sorted list"></p-button>
+                    </div>    
+                </div>
+
+                <div *ngIf="userOverride && !isGamePaused()" style="font-size: 16px;">Type your answer below. As you start typing, a list of possible answers will be displayed. Select your answer from the list.</div>
+                <br *ngIf="!isGamePaused()">         
+                <p-autoComplete id="txtAnswerInput" #answerInput *ngIf="messages.length === 0 && userOverride" [showTransitionOptions]="'0ms'" [hideTransitionOptions]="'0ms'" [(ngModel)]="selectedAnswer" [suggestions]="filteredAnswers" [autoHighlight]="true" (completeMethod)="filterAnswers($event)" [delay]="50" [forceSelection]="true" placeholder="Type your answer here" [minLength]="1" [inputStyle]="{'width':'100%', 'font-weight': 'bold', 'font-size': 'large'}" [style]="{'width':'100%'}"></p-autoComplete>
+                
+                <p-messages [(value)]="messages" [enableService]="false" [closable]="false"></p-messages>                
+
+                <div *ngIf="allowFeedback && isGamePaused()">                    
+                    <div *ngIf="requireLikertQuestions()">
+                        <b>Answer the following survey questions and click the button below to continue</b>
+                        <div *ngFor="let likertQuestion of likertQuestions; let i = index">
+                            <label class="statement">{{i+1}}. {{likertQuestion.question}}</label>
+                            <ul class='likert'>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="5" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Strongly agree</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="4" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Agree</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="3" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Neutral</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="2" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Disagree</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="1" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Strongly disagree</label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <br>
+                    <textarea id="txtFeedback" maxlength="200" rows="2" type="text" class="form-control" [(ngModel)]="oneShotAnswer.feedback" placeholder="(Optional) Provide Feedback" pTooltip="(Optional) Leave a message for the developer. 200 character limit"></textarea>
+                    <br>
+                    <ng-container *ngTemplateOutlet="grade;"></ng-container>
+                    <br>
+                    <br>
+                </div>
+                
+                <div *ngIf="messages.length > 0 && !showRewardButton && !showProgressSpinner" style="font-size: 24px;">
+                    5) Click this button to proceed.
+                    <br>
+                    <p-button id="btnProceedToNextQuestion" 
+                        [disabled]="!hasUserAnsweredLikertQuestions()"
+                        (onClick)="getNextTrial(true)"
+                        icon="far fa-fw fa-arrow-alt-circle-right"
+                        label="Proceed to next images">
+                    </p-button>
+                </div>
+               
+               <div *ngIf="showRewardButton && !showProgressSpinner" style="font-size: 24px;">
+                5) Click this button to collect HIT reward and exit.
+                <br>
+                <p-button id="btnCollectReward" 
+                    [disabled]="!hasUserAnsweredLikertQuestions()" 
+                    styleClass="ui-button-success" 
+                    (onClick)="giveAssignmentReward()" 
+                    icon="fas fa-award" 
+                    label="Collect HIT Reward">
+                </p-button>
+               </div>                   
+            </div>
+                       
+                   
+            <!-- A hack when running inside Amazon Mechanical Turk that prevents the user from accidentally tabbing onto the AMT Return button -->
+            <button type="button" style="background: transparent;border: none !important;font-size:0;"></button>
+            <button type="button" style="background: transparent;border: none !important;font-size:0;"></button>
+            <button type="button" style="background: transparent;border: none !important;font-size:0;"></button>
+        </p-panel>
+    </div>
+          
+    <form id='mturk_form' action="MTURK_FORM_TO_SUBMIT" method="POST">
+        <input type="hidden" id="assignmentId" name="assignmentId" [ngModel]="route.snapshot.queryParams['assignmentId']">
+        <input type="hidden" id="workerId" name="workerId" [ngModel]="route.snapshot.queryParams['workerId']">
+        <!-- <input type="hidden" id="hitDuration" name="hitDuration" value='HIT_DURATION'>
+        <input type="hidden" id="hitResult" name="hitResult" value='HIT_RESULT'>
+        <input type="hidden" id="hitComment" name="hitComment" value='HIT_COMMENT'> -->
+    </form>
+        
+</div>

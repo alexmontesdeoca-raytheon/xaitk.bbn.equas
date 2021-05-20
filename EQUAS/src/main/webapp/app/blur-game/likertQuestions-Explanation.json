@@ -1,0 +1,38 @@
+[
+    {
+        "id": "20",
+        "question": "The robot's explanation helped me to answer the question"
+    },
+    {
+        "id": "21",
+        "question": "I understand the robot's explanation of how it answered the question"
+    },
+    {
+        "id": "22",
+        "question": "This explanation of how the robot answered the question is satisfying"
+    },
+    {
+        "id": "23",
+        "question": "This explanation of how the robot answered the question has sufficient detail"
+    },
+    {
+        "id": "24",
+        "question": "This explanation of how the robot answered the question seems complete"
+    },
+    {
+        "id": "25",
+        "question": "This explanation of how the robot answered the question tells me how to use it"
+    },
+    {
+        "id": "26",
+        "question": "This explanation of how the robot answered the question is useful to my goals"
+    },
+    {
+        "id": "27",
+        "question": "This explanation indicates the robot's accuracy"
+    },
+    {
+        "id": "28",
+        "question": "This explanation lets me judge when I should/shouldn’t trust the robot"
+    }
+]

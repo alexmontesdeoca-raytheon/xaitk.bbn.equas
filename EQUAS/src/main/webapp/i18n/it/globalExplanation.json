@@ -1,0 +1,22 @@
+
+{
+    "equasApp": {
+        "globalExplanation" : {
+            "home": {
+                "title": "GlobalExplanations",
+                "createLabel": "Genera un nuovo Global Explanation",
+                "createOrEditLabel": "Genera o modifica un Global Explanation"
+            },
+            "created": "&Egrave; stato generato un nuovo Global Explanation con identificatore {{ param }}",
+            "updated": "&Egrave; stato aggiornato Global Explanation identificato da {{ param }}",
+            "deleted": "&Egrave; stato eliminato Global Explanation con identificatore {{ param }}",
+            "delete": {
+                "question": "Sei sicuro di volere eliminare Global Explanation {{ id }}?"
+            },
+            "detail": {
+                "title": "Global Explanation"
+            },
+            "name": "Name"
+        }
+    }
+}

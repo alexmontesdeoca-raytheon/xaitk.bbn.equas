@@ -1,0 +1,595 @@
+<style>
+    #trail text,
+    #legend text {
+        font-weight: 300;
+        fill: #fff;
+    }
+
+    #chart {
+        position: relative;
+    }
+
+    #explanation {
+        position: absolute;
+        top: 350px;
+        left: 430px;
+        width: 140px;
+        text-align: center;
+        color: #666;
+        z-index: 999;
+    }
+
+    #percentage {
+        font-size: 2.5em;
+    }
+</style>
+<ng-template #answerTableTemplate>
+    <p-table #topAnswersTable [value]="globalExplanationDataset.answerTable" [exportFilename]="'Turker Answers'" [columns]="answercols" [paginator]="true" pageLinks="10" paginatorPosition="both" [rows]="20" [rowsPerPageOptions]="[10, 20, 50, 100]" sortField="count" sortOrder="-1" sortMode="single">
+        <ng-template pTemplate="caption">
+            <div style="text-align: left">
+                <i class="fa fa-search" style="margin:4px 4px 0 0"></i>
+                <p-dropdown [options]="matchModeOptions" [(ngModel)]="answerFilterMatchMode" (onChange)="filterAnswers(answerFilterText)"></p-dropdown>
+                <input type="text" [(ngModel)]="answerFilterText" pInputText size="100" placeholder="Filter" (input)="filterAnswers($event.target.value)" style="width:30%">
+                <span>{{topAnswersTable.totalRecords}} of {{globalExplanationDataset.answerTable.length}}</span>
+                <div style="float:right">
+                    <button type="button" pButton icon="fas fa-file-export" iconPos="left" label="Export" (click)="topAnswersTable.exportCSV()" pTooltip="Export table to CSV format" tooltipPosition="left"></button>
+                </div>
+            </div>
+        </ng-template>
+        <ng-template pTemplate="header">
+            <tr>
+                <th pSortableColumn="answer">
+                    Answer
+                    <p-sortIcon field="answer"></p-sortIcon>
+                </th>
+                <th pSortableColumn="imageCount">
+                    # of questions with this answer
+                    <p-sortIcon field="imageCount"></p-sortIcon>
+                </th>
+                <th pSortableColumn="count">
+                    # of <b>unique</b> questions with this answer
+                    <p-sortIcon field="count"></p-sortIcon>
+                </th>
+            </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-item>
+            <tr>
+                <td>{{item.answer}}</td>
+                <td>
+                    <p-button (onClick)="getAnnotationsForAnswer(item.answer)" icon="fas fa-images" pTooltip="View questions & images with this answer" tooltipPosition="top"></p-button>
+                    {{item.imageCount}}
+                </td>
+                <td>
+                    <p-button (onClick)="questionTableDialogModel.selectAnswer(item);" icon="fas fa-question-circle" pTooltip="View the unique questions that have this answer" tooltipPosition="top"></p-button>
+                    {{item.count}}
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+</ng-template>
+<ng-template #modelAnswerTableTemplate>
+    <p-table #topModelAnswersTable [value]="globalExplanationDataset.modelAnswerTable" [exportFilename]="'Model Answers'" [columns]="answercols" [paginator]="true" pageLinks="10" paginatorPosition="both" [rows]="20" [rowsPerPageOptions]="[10, 20, 50, 100]" sortField="count" sortOrder="-1" sortMode="single">
+        <ng-template pTemplate="caption">
+            <div style="text-align: left">
+                <i class="fa fa-search" style="margin:4px 4px 0 0"></i>
+                <p-dropdown [options]="matchModeOptions" [(ngModel)]="answerFilterMatchMode" (onChange)="filterAnswers(answerFilterText)"></p-dropdown>
+                <input type="text" [(ngModel)]="answerFilterText" pInputText size="100" placeholder="Filter" (input)="filterAnswers($event.target.value)" style="width:30%">
+                <span>{{topModelAnswersTable.totalRecords}} of {{globalExplanationDataset.modelAnswerTable.length}}</span>
+                <div style="float:right">
+                    <button type="button" pButton icon="fas fa-file-export" iconPos="left" label="Export" (click)="topModelAnswersTable.exportCSV()" pTooltip="Export table to CSV format" tooltipPosition="left"></button>
+                </div>
+            </div>
+        </ng-template>
+        <ng-template pTemplate="header">
+            <tr>
+                <th pSortableColumn="answer">
+                    Answer
+                    <p-sortIcon field="answer"></p-sortIcon>
+                </th>
+                <th pSortableColumn="imageCount">
+                    # of questions with this answer
+                    <p-sortIcon field="imageCount"></p-sortIcon>
+                </th>
+                <th pSortableColumn="count">
+                    # of <b>unique</b> questions with this answer
+                    <p-sortIcon field="count"></p-sortIcon>
+                </th>
+            </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-item>
+            <tr>
+                <td>{{item.answer}}</td>
+                <td>
+                    <p-button (onClick)="getAnnotationsForModelAnswer(item.answer)" icon="fas fa-images" pTooltip="View questions & images with this answer" tooltipPosition="top"></p-button>
+                    {{item.imageCount}}
+                </td>
+                <td>
+                    <p-button (onClick)="questionTableDialogModel.selectAnswer(item);" icon="fas fa-question-circle" pTooltip="View the unique questions that have this answer" tooltipPosition="top"></p-button>
+                    {{item.count}}
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+</ng-template>
+
+<ng-template #questionTableTemplate let-questionTableModel>
+    <p-table #topQuestionsTable [value]="questionTableModel.dataset" [columns]="questionTableCols" [exportFilename]="questionTableExportFilename" [autoLayout]="true" [paginator]="true" pageLinks="10" paginatorPosition="both" [rows]="20" [rowsPerPageOptions]="[10, 20, 50, 100]" sortField="count" sortOrder="-1" sortMode="single">
+        <ng-template pTemplate="caption">
+            <div style="text-align: left">
+                <i class="fa fa-search" style="margin:4px 4px 0 0"></i>
+                <p-dropdown [options]="questionTableModel.matchModeOptions" [(ngModel)]="questionTableModel.questionFilterMatchMode" (onChange)="topQuestionsTable.filter(questionTableModel.questionFilter, 'question', questionTableModel.questionFilterMatchMode);"></p-dropdown>
+                <input type="text" [(ngModel)]="questionTableModel.questionFilter" pInputText size="100" placeholder="Filter" (input)="topQuestionsTable.filter($event.target.value, 'question', questionTableModel.questionFilterMatchMode);" style="width:30%">
+                <span>{{topQuestionsTable.totalRecords}} of {{questionTableModel.dataset.length}}</span>
+
+                <div style="float:right">
+                    <button type="button" pButton icon="fas fa-file-export" iconPos="left" label="Export" (click)="topQuestionsTable.exportCSV()" pTooltip="Export table to CSV format" tooltipPosition="left"></button>
+                    Top N Answers:
+                    <p-spinner size="2" min="1" max="20" [(ngModel)]="questionTableModel.nTopAnswers" (onChange)="questionTableModel.setNTopAnswersArray();"></p-spinner>
+
+                </div>
+
+            </div>
+        </ng-template>
+        <ng-template pTemplate="header">
+            <tr>
+                <th rowspan="2" pSortableColumn="question" style="min-width: 400px;">Question
+                    <p-sortIcon field="question"></p-sortIcon>
+                </th>
+                <th rowspan="2" pSortableColumn="count" style="min-width: 135px; width: 155px;"># of images with this question
+                    <p-sortIcon field="count"></p-sortIcon>
+                    <p-slider (click)="$event.stopPropagation();" [style]="{'width':'100%','margin-top':'8px'}" [(ngModel)]="questionTableModel.countFilter" [min]="0" [max]="questionTableModel.countFilterMax" (onChange)="topQuestionsTable.filter($event.value, 'count', 'gt');" pTooltip="{{questionTableModel.countFilter}}" tooltipPosition="top"></p-slider>
+                </th>
+                <th colspan="3" style="text-align: center;">Unique Answers</th>
+
+                <ng-container *ngFor="let number of questionTableModel.nTopAnswersArray">
+                    <th colspan="4" style="text-align: center;">#{{number}} Answer</th>
+                </ng-container>
+            </tr>
+            <tr>
+                <!-- <th pSortableColumn="totalAnswerCount">Total
+                    <p-sortIcon field="totalAnswerCount"></p-sortIcon>
+                </th> -->
+                <th pSortableColumn="uniqueTurkerAnswerCount" style="white-space: nowrap">By Turkers
+                    <p-sortIcon field="uniqueTurkerAnswerCount"></p-sortIcon>
+                    <p-slider (click)="$event.stopPropagation();" [style]="{'width':'100%','margin-top':'8px'}" [(ngModel)]="questionTableModel.uniqueTurkerAnswerCountFilter" [min]="0" [max]="questionTableModel.uniqueTurkerAnswerCountMax" (onChange)="topQuestionsTable.filter($event.value, 'uniqueTurkerAnswerCount', 'gt');" pTooltip="{{questionTableModel.uniqueTurkerAnswerCountFilter}}" tooltipPosition="top"></p-slider>
+                </th>
+                <th pSortableColumn="uniqueModelAnswerCount" style="white-space: nowrap">By Model
+                    <p-sortIcon field="uniqueModelAnswerCount"></p-sortIcon>
+                </th>
+                <th pSortableColumn="correctCountPercent" style="white-space: nowrap">% Correct
+                    <p-sortIcon field="correctCountPercent"></p-sortIcon>
+                </th>
+
+                <ng-container *ngFor="let number of questionTableModel.nTopAnswersArray">
+                    <th pSortableColumn="topTurkerAnswer{{number}}" style="white-space: nowrap">#{{number}} by Turkers
+                        <p-sortIcon field="topTurkerAnswer{{number}}"></p-sortIcon>
+                    </th>
+                    <th pSortableColumn="topTurkerAnswer{{number}}Count">#
+                        <p-sortIcon field="topTurkerAnswer{{number}}Count"></p-sortIcon>
+                    </th>
+
+                    <th pSortableColumn="topModelAnswer{{number}}" style="white-space: nowrap">#{{number}} by Model
+                        <p-sortIcon field="topModelAnswer2"></p-sortIcon>
+                    </th>
+                    <th pSortableColumn="topModelAnswer{{number}}Count">#
+                        <p-sortIcon field="topModelAnswer{{number}}Count"></p-sortIcon>
+                    </th>
+                </ng-container>
+
+            </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-item>
+            <tr>
+                <td>{{item.question}}</td>
+                <td>
+                    <p-button (onClick)="getAnnotationsForQuestion(item)" icon="fas fa-images" pTooltip="Show images with this question" tooltipPosition="top"></p-button>
+                    {{item.count}}
+                </td>
+                <td>
+                    <!-- {{item.totalAnswerCount}} -->
+                    <p-button (onClick)="setTopAnswerChartData(item, false); showTopAnswersGraph=true" icon="fas fa-chart-bar" pTooltip="Show top Turker answers graph" tooltipPosition="top"></p-button>
+                    {{item.uniqueTurkerAnswerCount}}
+                </td>
+                <td>
+                    <p-button (onClick)="setTopAnswerChartData(item, true); showTopAnswersGraph=true" icon="fas fa-chart-bar" pTooltip="Show top Model answers graph" tooltipPosition="top"></p-button>
+                    {{item.uniqueModelAnswerCount}}
+                </td>
+                <td>{{item.correctCountPercent | percent: '1.0-0'}}</td>
+
+                <ng-container *ngFor="let number of questionTableModel.nTopAnswersArray">
+                    <td>{{item.getTopTurkerAnswer(number)}}</td>
+                    <td>{{item.getTopTurkerAnswerCount(number)}}</td>
+                    <td style.color="{{ item.doAnswersMatchColor(number) }}">{{item.getTopModelAnswer(number)}}</td>
+                    <td>{{item.getTopModelAnswerCount(number)}}</td>
+                </ng-container>
+            </tr>
+        </ng-template>
+    </p-table>
+</ng-template>
+
+<ng-template #annotationImageListTemplate>
+
+</ng-template>
+
+<div *ngIf="!loadComplete || showWaitSpinner" style="position: fixed; top: calc(50% - 50px); left: calc(50% - 50px); z-index: 10000;">
+    <p-progressSpinner></p-progressSpinner>
+</div>
+
+<p-sidebar [(visible)]="showRightSidebar" position="right" [dismissible]="false" [modal]="false">
+    <pre id="rootWords">
+
+    </pre>
+</p-sidebar>
+
+<p-toast position="top-right"></p-toast>
+<div style="min-height: 85vh;">
+
+    <!-- <h2 id="page-heading">
+        <span jhiTranslate="equasApp.globalExplanation.home.title">Global Explanations</span>
+        <button id="jh-create-entity" class="btn btn-primary float-right jh-create-entity create-global-explanation" [routerLink]="['/global-explanation/new']">
+            <fa-icon [icon]="'plus'"></fa-icon>
+            <span  jhiTranslate="equasApp.globalExplanation.home.createLabel">
+            Create new Global Explanation
+            </span>
+        </button>
+    </h2> -->
+    <jhi-alert></jhi-alert>
+
+    <p-dialog [(visible)]="vqaPlaygroundDialogModel.display" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [style]="{'width': '96%', 'min-height': '95%'}">
+        <p-header>
+            <i class="fas fa-image"></i>
+            VQA Playground - (Faithful Explanation)
+        </p-header>
+        <div *ngIf="vqaPlaygroundDialogModel.display">
+            <jhi-faithful-vqa [isGEpopup]="true" [defaultImage]="vqaPlaygroundDialogModel.defaultImage" [autoAskQuestion]="vqaPlaygroundDialogModel.autoAskQuestion" [autoAskGroundTruth]="vqaPlaygroundDialogModel.autoAskGroundTruth"></jhi-faithful-vqa>
+        </div>
+    </p-dialog>
+   
+    <p-dialog *ngIf="annotationDialogModel.displaySelected" [(visible)]="annotationDialogModel.displaySelected" [responsive]="true" showEffect="fade" [modal]="true" [draggable]="false" [style]="{'width': '96%', 'min-height': '95%'}">
+        <p-header>
+            <i class="far fa-images"></i>
+            Image/Annotation Details
+            <a href="./#/global-explanation/{{annotationDialogModel.selectedAnnotation.question_id}}/view" target="_blank" pTooltip="Open in a new browser tab.">
+                <i class="fas fa-external-link-alt"></i>
+                
+            </a>
+            <!-- <button pButton type="button" icon="fas fa-external-link-alt" onclick="window.open('./global-explanation/{{annotationDialogModel.selectedAnnotation.question_id}}/view','_blank')" pTooltip="Open in a new browser tab."></button> -->
+            <!-- URL: {{route.snapshot.url[0].path}}/{{annotationDialogModel.selectedAnnotation.question_id}}/view -->
+        </p-header>
+        <jhi-global-explanation-detail [questionId]="annotationDialogModel.selectedAnnotation.question_id" [autoSearch]="annotationDialogModel.autoSearchForRejectedAlternatives" ></jhi-global-explanation-detail>
+    </p-dialog>
+
+    <p-dialog [(visible)]="annotationDialogModel.display" [modal]="true" [draggable]="false" [style]="{'width': '96%', 'min-height': '95%'}">
+        <p-header>
+            <i class="far fa-images"></i>
+            <span *ngIf="annotationDialogModel.display">
+                {{annotationDialogModel.type}}
+                <br>
+                <b>{{annotationDialogModel.value}} </b>
+            </span>
+        </p-header>
+
+        <p-dataView #annotationDataView *ngIf="annotationDialogModel.display" [value]="annotationDialogModel.annotations" [paginator]="true" pageLinks="10" paginatorPosition="both" [rows]="50" [rowsPerPageOptions]="[10, 20, 30, 50, 100]" paginatorPosition="both" layout="list" filterBy="{{annotationDialogModel.selectedFilter}}">
+            <p-header>
+                <div class="ui-helper-clearfix">
+                    <div class="ui-g">
+                        <div class="ui-g-12 ui-md-10">
+                            <i class="fa fa-search" style="margin:4px 4px 0 0"></i>
+                            Filter by
+                            <p-dropdown [(ngModel)]="annotationDialogModel.selectedFilter" [options]="annotationDialogModel.filterOptions" (onChange)="annotationDataView.filter(annotationDialogModel.filterText); annotationDataView.first=0"></p-dropdown>
+                            <!-- <p-dropdown [options]="annotationDialogModel.matchModeOptions" [(ngModel)]="annotationDialogModel.answerFilterMatchMode"></p-dropdown> -->
+                            <input type="search" pInputText placeholder="" [(ngModel)]="annotationDialogModel.filterText" (keyup)="annotationDataView.filter($event.target.value); annotationDataView.first=0">
+                            <span style="margin-right: 8px;">{{annotationDataView.totalRecords}} of {{annotationDialogModel.annotations.length}}</span>
+                            <p-checkbox [(ngModel)]="showSegmentationMask" label="Show Segmentation Mask" binary="true"></p-checkbox>
+                        </div>
+                        <div class="ui-g-6 ui-md-2" style="text-align:right">
+                            <p-dataViewLayoutOptions></p-dataViewLayoutOptions>
+                        </div>
+                    </div>
+                </div>
+            </p-header>
+
+            <ng-template let-annotation pTemplate="gridItem">
+                <div style="width: 280px; padding:.5em; border: 1px solid #d9d9d9;" class="ui-g-12 ui-md-2">
+                    <a>
+                        <!-- <img src="/evaluation_dataset/v2_coco/training/images/{{annotation.imageName}}" (click)="annotationDialogModel.selectAnnotation(annotation)" style="height: 220px; width: 100%;" pTooltip="{{annotation.imageName}}" tooltipPosition="top">
+                        <img src="/evaluation_dataset/fe_ge_results/seg/{{annotation.question_id}}.jpg" (click)="annotationDialogModel.selectAnnotation(annotation)" style="height: 220px; width: 100%;" pTooltip="{{annotation.imageName}}" tooltipPosition="top"> -->
+                        <div [ngStyle]="{ 'background-image': 'url(/evaluation_dataset/v2_coco/training/images/' + annotation.imageName + ')', 'background-size' : '100% 220px'}" (click)="annotationDialogModel.selectAnnotation(annotation)" pTooltip="{{annotation.imageName}}" tooltipPosition="top">
+                            <img [style.visibility]="showSegmentationMask ? 'visible' : 'hidden'" src="/evaluation_dataset/fe_ge_results/seg/{{annotation.question_id}}.jpg" style="z-index:1; mix-blend-mode: color; width: 100%; height: 220px;">
+                        </div>
+                        <span>
+                            {{annotation.question}}?
+                        </span>
+                        <br>
+                        <span>
+                            Model Answer:
+                            <b style.color="{{ annotation.modelAnswer == annotation.topAnswer ? 'darkgreen' : 'rgb(204, 118, 7)' }}">{{annotation.modelAnswer}}</b>
+                            <p-button icon="fa fa-image" pTooltip="View this image/question/answer in the VQA playground" tooltipPosition="right" (onClick)="vqaPlaygroundDialogModel.displayImage(annotation.imageName, annotation.question, annotation.topAnswer)"></p-button>                            
+                        </span>
+                        <br>
+                        <span>
+                            Top Turker Answer:
+                            <b>{{annotation.topAnswer}}</b>
+                        </span>
+                        <br>
+                        <span [innerHTML]="annotation.explanationHtml | safe">
+                        </span>
+                    </a>
+                </div>
+            </ng-template>
+            <ng-template let-annotation pTemplate="listItem">
+                <!-- <a style="height: 160px; width: 160px; padding:.5em" class="ui-g-12 ui-md-2">
+                    <img src="/evaluation_dataset/v2_coco/training/images/{{annotation.imageName}}" style="height: 100%; width: 100%;" pTooltip="{{annotation.imageName}}" tooltipPosition="top">
+                </a> -->
+
+                <div style="border-bottom: 1px solid #d9d9d9">
+                    <div style="text-align:center; float: left;">
+                        <a [ngStyle]="{ 'background-image': 'url(/evaluation_dataset/v2_coco/training/images/' + annotation.imageName + ')', 'background-size' : '400px 400px', 'padding' : '0'}" style="width: 400px; height: 400px; padding:.5em" class="ui-g-12 ui-md-3" (click)="annotationDialogModel.selectAnnotation(annotation)">
+                            <!-- <img src="/evaluation_dataset/v2_coco/training/images/{{annotation.imageName}}" style="height: 100%; width: 100%;" pTooltip="{{annotation.imageName}}" tooltipPosition="top"> -->
+                            <img [style.visibility]="showSegmentationMask ? 'visible' : 'hidden'" src="/evaluation_dataset/fe_ge_results/seg/{{annotation.question_id}}.jpg" style="z-index:1; mix-blend-mode: color; width: 400px; height: 400px;">
+                        </a>
+                        <!-- <img src="/evaluation_dataset/v2_coco/training/images/{{annotation.imageName}}"> -->
+                    </div>
+                    <div style="float: left; margin: 8px;">
+                        <div style="display:grid;">
+                            <h4>{{annotation.question}}?</h4>
+                            <span>Id: {{annotation.question_id}}</span>
+                            <span>
+                                Model Answer:
+                                <b style.color="{{ annotation.modelAnswer == annotation.topAnswer ? 'darkgreen' : 'rgb(204, 118, 7)' }}">{{annotation.modelAnswer}}</b>
+                                <p-button icon="fa fa-image" pTooltip="View this image/question/answer in the VQA playground" tooltipPosition="right" (onClick)="vqaPlaygroundDialogModel.displayImage(annotation.imageName, annotation.question, annotation.topAnswer)"></p-button>
+                                <p-button icon="fa fa-eye-slash" pTooltip="Search for similar rejected alternatives" tooltipPosition="right" (onClick)="annotationDialogModel.searchForRejectedAlternatives(annotation)"></p-button>
+                            </span>
+                            <span>
+                                Top Turker Answer:
+                                <b>{{annotation.topAnswer}}</b>
+                            </span>
+                            <span>
+                                Explanation:
+                                <span [innerHTML]="annotation.explanationHtml | safe">
+                                </span>
+                            </span>
+                            <div style="margin-top: 16px; width: 400px">
+                                <p-table [value]="annotation.topN">
+                                    <ng-template pTemplate="header">
+                                        <tr>
+                                            <th>Top 5 Model Answers</th>
+                                            <th>Score</th>
+                                        </tr>
+                                    </ng-template>
+                                    <ng-template pTemplate="body" let-item>
+                                        <tr>
+                                            <td>{{item.answer}}</td>
+                                            <td>{{item.score | number}}</td>
+                                        </tr>
+                                    </ng-template>
+                                </p-table>
+                            </div>
+                            <div *ngIf="annotation.componentExplanation" >
+                                <div *ngFor="let component of annotation.componentExplanation.slice(0, 10)">
+                                    <b>{{component.class}}</b>  : relevance = {{component.scoreSum | number}} 
+                                </div>                                
+                            </div>
+                            
+                        </div>
+                    </div>
+                    <div style="float: left; margin: 8px; width: 400px">
+                        <p-table [value]="annotation.answers">
+                            <ng-template pTemplate="header">
+                                <tr>
+                                    <th>Turker Answers  <b>(Consensus: {{annotation.consensus}})</b></th>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="body" let-item>
+                                <tr>
+                                    <td>{{item.answer}}</td>
+                                </tr>
+                            </ng-template>
+                        </p-table>
+                    </div>
+                </div>
+
+            </ng-template>
+        </p-dataView>
+    </p-dialog>    
+
+    <p-dialog [(visible)]="showTopAnswersGraph" [responsive]="true" showEffect="fade" [modal]="true" [draggable]="false" [style]="{'width': '96%', 'min-height': '95%'}">
+        <p-header>
+            <i class="fas fa-chart-bar"></i>
+            <span>
+                Top turker answers vs. top model answers for the question
+                <br>
+                <b>{{topAnswerChartOptions.title.text}}</b>
+            </span>
+
+        </p-header>
+        <div *ngIf="showTopAnswersGraph" style="min-height: 70vh;">
+            <p-chart type="bar" [data]="topAnswerChartData" [options]="topAnswerChartOptions" width="{{topAnswerChartWidth}}px" height="800px" [responsive]="false"></p-chart>
+        </div>
+    </p-dialog>
+
+    <p-dialog [(visible)]="questionTableDialogModel.display" [modal]="true" [blockScroll]="true" [draggable]="false" resizable="false" dismissableMask="true" [style]="{'width': '96%', 'min-height': '95%'}">
+        <p-header>
+            <i class="fas fa-question-circle"></i>
+            Questions with answer
+            <br>
+            <b>{{questionTableDialogModel.title}}</b>
+        </p-header>
+        <div *ngIf="questionTableDialogModel.display" style="overflow: auto;">
+            <ng-container *ngTemplateOutlet="questionTableTemplate; context: {$implicit: questionTableDialogModel} "></ng-container>
+        </div>
+    </p-dialog>
+
+    <p-dialog [(visible)]="showTopAnswersGrid" [modal]="true" [blockScroll]="true" [draggable]="false" resizable="false" dismissableMask="true" [style]="{'width': '96%', 'min-height': '95%'}">
+        <p-header>
+            <i class="fas fa-users"></i>
+            All Answers
+        </p-header>
+        <div *ngIf="showTopAnswersGrid" style="overflow: auto;">
+            <ng-container *ngTemplateOutlet="answerTableTemplate"></ng-container>
+        </div>
+    </p-dialog>
+
+    <p-tabView [activeIndex]="activeTabIndex" (onChange)="tabChanged($event)">
+        <p-tabPanel header="Stats" leftIcon="fas fa-chart-pie">
+            <div style="min-height: 85vh">
+                <!-- <span>Dataset: v2_coco/training</span>
+                <table>
+                    <tr>
+                        <th></th>
+                        <th>Total</th>
+                        <th>Unique</th>
+                    </tr>
+                    <tr>
+                        <th>Images</th>
+                        <td>{{globalExplanationDataset.statistics.imageCount | number}}</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <th>Questions</th>
+                        <td>{{globalExplanationDataset.statistics.questionsTotal | number}}</td>
+                        <td>{{globalExplanationDataset.statistics.questionsUnique | number}}</td>
+                    </tr>
+                    <tr>
+                        <th>Answers</th>
+                        <td>{{globalExplanationDataset.statistics.answersTotal | number}}</td>
+                        <td>{{globalExplanationDataset.statistics.answersUnique | number}}</td>
+                    </tr>
+                </table> -->
+
+                <div *ngIf="loadComplete">
+                    <div style="float: right;">
+                        <div class="form-group">
+                            <button type="button" [disabled]="hasFilterChanged()" pButton icon="fas fa-filter" iconPos="left" label="Apply Filter" (click)="applyFilterAndTransition()" pTooltip="" tooltipPosition="left"></button>
+                            <button type="button" [disabled]="isDefaultFilter()" pButton icon="fas fa-ban" iconPos="left" label="Clear Filter" (click)="clearFilterAndTransition()" pTooltip="Remove all filters and show the full dataset" tooltipPosition="left"></button>
+                        </div>
+                        <div class="form-group" pTooltip="Only include questions where at least {{filterParams.minTurkerConsensus | percent}} of Turkers agreed on the ground truth"><p-spinner [(ngModel)]="filterParams.minTurkerConsensus" [min]="0" [max]="1" [step]=".1" [size]="4"  [style]="{'vertical-align': 'middle'}"></p-spinner>Min Turker Consensus</div>
+                        <div class="form-group" pTooltip="Limit the results to a subset of questions" ><p-spinner [(ngModel)]="filterParams.maxQuestions" [min]="0" [max]="999999" [formatInput]="true" thosandSeparator="," decimalSeparator="." [size]="4"></p-spinner>Max # of Questions</div>
+                        <div class="form-group" pTooltip="Shuffle seed is used to randomize the order of the results in a deterministic manner."><p-spinner [(ngModel)]="filterParams.shuffleSeed" [min]="0" [max]="999" [size]="4"></p-spinner>Shuffle Seed</div>
+                        <div class="form-group" pTooltip="Include/Exclude questions where the VQA answered correctly"><p-inputSwitch [(ngModel)]="filterParams.vqaRight" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Is VQA Correct</div>
+                        <div class="form-group" pTooltip="Include/Exclude questions where the VQA answered incorrectly"><p-inputSwitch [(ngModel)]="filterParams.vqaWrong" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Is VQA Wrong</div>
+                        <div class="form-group" pTooltip="Allow/Disallow multiple questions per image"><p-inputSwitch [(ngModel)]="filterParams.allowDuplicateImages" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Duplicate Images</div>                        
+                        <div class="form-group" pTooltip="Allow/Disallow duplicate questions"><p-inputSwitch [(ngModel)]="filterParams.allowDuplicateQuestions" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Duplicate Questions</div> 
+                        <div class="form-group" pTooltip="Include/Exclude Binary questions "><p-inputSwitch [(ngModel)]="filterParams.allowBinary" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Binary Questions</div>
+                        <div class="form-group" pTooltip="Include/Exclude OCR questions "><p-inputSwitch [(ngModel)]="filterParams.allowOcr" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow OCR Questions</div>
+                        <div class="form-group"><b>The following apply to Turker answers only</b></div>
+                        
+                        <div class="form-group" pTooltip="Allow/Disallow duplicate answers"><p-inputSwitch [(ngModel)]="filterParams.allowDuplicateAnswers" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Duplicate Answers</div>                        
+                        <div class="form-group" pTooltip="Include/Exclude questions that have Yes/No answers"><p-inputSwitch [(ngModel)]="filterParams.allowYesNo" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Yes/No Answers</div>                        
+                        <div class="form-group" pTooltip="Include/Exclude questions that have Numeric answers"><p-inputSwitch [(ngModel)]="filterParams.allowNumeric" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Numeric Answers</div>                        
+                        <div class="form-group" pTooltip="Include/Exclude questions that have answers in the plural form. e.g. apples/apple"><p-inputSwitch [(ngModel)]="filterParams.allowPluralForms" [style]="{'vertical-align': 'middle'}"></p-inputSwitch>Allow Plural Form Answers</div>
+                        
+                        <p-button (onClick)="getNAnnotations(topNresults)" label="Show first {{topNresults}}" icon="fas fa-images" pTooltip="Show first {{topNresults}} question/answer/image triples for this filter" tooltipPosition="top"></p-button>
+                    </div>
+                        
+                    <div style="float: left; display: grid;">                        
+                        <span>Dataset</span>
+                        <span>Image count</span>
+                        <span>Total number of questions </span>
+                        <span>Unique questions</span>
+                        <span>Total Turker answers</span>
+                        <span>Unique Turker answers</span>
+                        <span>Unique Model answers</span>
+                        <span>Groundtruth vs. Model Answers</span>
+
+                    </div>
+                    <div style="float: left; display: grid; margin-left: 15px;">
+                        <span>v2_coco/training</span>
+                        <span>{{globalExplanationDataset.statistics.imageCount | number}}</span>
+                        <span>{{globalExplanationDataset.statistics.questionsTotal | number}}</span>
+                        <span>{{globalExplanationDataset.statistics.questionsUnique | number}} </span>
+                        <span>{{globalExplanationDataset.statistics.answersTotal | number}}</span>
+                        <span>{{globalExplanationDataset.statistics.answersUnique | number}} </span>
+                        <span>{{globalExplanationDataset.statistics.modelAnswersUnique | number}} </span>
+                        <span>{{globalExplanationDataset.statistics.modelAnswersCorrect /
+                            globalExplanationDataset.statistics.questionsTotal | percent: '1.1-2'}} correct</span>
+
+                    </div>
+                    <div style="width: 650px">
+                        <p-chart type="pie" [data]="chartPieAnswers.data" [options]="chartPieAnswers.options"></p-chart>
+                    </div>
+                    <div style="width: 650px">
+                        <p-chart type="pie" [data]="chartPieConsensus.data" [options]="chartPieConsensus.options"></p-chart>
+                    </div>
+                    <div style="width: 650px">
+                        <p-chart type="line" [data]="chartConsensusVsTop5.data" [options]="chartConsensusVsTop5.options"></p-chart>
+                    </div>
+
+                    <!-- <div style="width: 650px">
+                        <p-chart type="line" [data]="chartPieAnswers.data" [options]="chartPieAnswers.options"></p-chart>
+                    </div> -->
+
+                </div>
+            </div>
+        </p-tabPanel>
+        <p-tabPanel header="Questions" leftIcon="fas fa-question-circle">
+            <ng-container *ngTemplateOutlet="questionTableTemplate; context: {$implicit: globalExplanationDataset.questionTableModel}"></ng-container>
+        </p-tabPanel>
+        <p-tabPanel header="Turker Answers" leftIcon="fas fa-users">
+            <ng-container *ngTemplateOutlet="answerTableTemplate"></ng-container>
+        </p-tabPanel>
+        <p-tabPanel header="Model Answers" leftIcon="fas fa-comment-dots">
+            <ng-container *ngTemplateOutlet="modelAnswerTableTemplate"></ng-container>
+        </p-tabPanel>
+        <p-tabPanel header="Sunburst" leftIcon="fas fa-sun">
+            <div id="main" style="margin-top:-25px">
+                <div>
+
+                    <!-- <p-button (onClick)="showTopQuestions = true" icon="fas fa-sort-amount-down" pTooltip="Show top questions" tooltipPosition="top"></p-button>
+                                            <p-button (onClick)="showTreeView = true" icon="fas fa-sitemap" pTooltip="Show tree view" tooltipPosition="top"></p-button> -->
+
+                </div>
+                <br>
+                <p style="margin-top:0px;">
+                    <!-- <input type="text" id="txtSearch" oninput="searchInputChange()"> -->
+                    <!-- <input name="reset" type="button" value="Reset" onclick="hello()" style="width:100px;"> -->
+                    <span class="ui-float-label" style="margin: 8px;">
+                        <!-- <p-autoComplete [(ngModel)]="questionText" [suggestions]="filteredQuestions" (input)="showRightSidebar=true" (onClear)="filterQuestions()" (completeMethod)="filterQuestions()" [inputStyle]="{'width':'50%'}" [style]="{'width':'100%'}"></p-autoComplete> -->
+                        <input id="sunburstFilterText" (blur)="showRightSidebar=false" (input)="showRightSidebar=true;sunburstGraph.searchInputChange($event.target.value)" style="width:50%;" />
+                        <!-- <label for="float-input">What's your question?</label> -->
+
+                    </span>
+                </p>
+                <div id="sequence"></div>
+                <div id="chart" style="margin-top:-10px">
+                    <div id="explanation" style="visibility: hidden;">
+                        <span id="percentage"></span>
+                        <br /> of questions start with
+                    </div>
+                </div>
+            </div>
+        </p-tabPanel>
+        <p-tabPanel header="Log" leftIcon="fas fa-stopwatch">
+            <p-table [value]="globalExplanationDataset.log.items">
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th>Task Name</th>
+                        <th>Elapsed Time (sec)</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-entry>
+                    <tr>
+                        <td>{{entry.name}}</td>
+                        <td>{{entry.durationMs / 1000}}</td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </p-tabPanel>
+    </p-tabView>
+
+    <div id="sidebar" style="z-index: -99;">
+        <div class="row" style="position: absolute; top: 90px;  left: 200px; width:400px; z-index: -99;" id="list">
+            <p style="margin-left:-10px;">
+                <u>Top Answers</u>
+            </p>
+            <div id="anss" class="large-1 columns" style="text-align:left; display:inline-block; float: left; margin-left:-25px;"></div>
+            <div id="anss2" class="large-11 columns" style="text-align:left; margin-left:25px; display:inline-block; float: left;"></div>
+        </div>
+
+        <!-- <p style="margin-left:-10px;"><u>Next Words</u></p> -->
+        <!-- <pre id="nextWords" style="position: absolute; top: 0;  right: 0;">
+
+        </pre> -->
+
+    </div>
+</div>

@@ -1,0 +1,482 @@
+<p-toast position="center" [baseZIndex]="99999"></p-toast>
+
+<ng-template #geInstructions>
+        <b>Here is a description of how the robot usually performs. Please use this information to help yourself make better guesses. This explanation will be repeated on each screen that you see:</b>
+        <ol>
+            <li>If the answer is a sport, an animal, or a location then the robot will almost always be right.</li>
+            <li>If answering requires reading letters or numbers, the robot will almost always be wrong.</li>
+            <li>The robot usually gets “how many” questions right if the answer is 2 (or sometimes 1) and is usually wrong otherwise.</li>
+            <li>If these rules don’t apply use your best judgment knowing that the robot is right a little more often than it is wrong.</li>
+        </ol>
+</ng-template>
+
+<p-dialog [(visible)]="showPreamble"(onHide)="startSession();" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="turkerAcceptedAssigment()" [style]="{'z-index' : '995', 'max-width' : '900px'}">
+    <p-header>
+        <i class="fas fa-info-circle"></i>
+        (EQUAS-2) Instructions
+    </p-header>
+    <div>
+        <h4>
+            <!-- Mental Modeling Instructions -->
+            <div *ngIf="isMentalModeling()">
+                Welcome to the Robot Second-Guessing Game.
+                <br>
+                <br>
+                In this task you will guess whether our smart robot answered a question about an image correctly or not. 
+                This is a hard task because the robot was often wrong and for many different reasons. 
+                The robot is a machine learning system that has been trained on many images and questions.
+                After each of your predictions you will be told whether your prediction was correct, but you will not be told what the robot answered.                 
+                <br>
+                <br>
+                You have to complete ({{questionsPerHit}}) questions and you can only do ({{getHitsAllowed()}}) HIT.
+                <br>
+                <!-- You will be paid a bonus of ${{bonusPay | number : '1.2-2'}} for each correct answer you give. -->
+                You can earn a bonus up to ${{maxBonusPayout | number : '1.2-2'}} depending on your accuracy.
+            </div>
+            <!-- Blur Game Instructions -->
+            <div *ngIf="!isMentalModeling()">
+                Welcome to the blur game.
+                <br>
+                <br>
+                <div *ngIf="isNoModality()">
+                    For this task you will be asked a question about each of ({{questionsPerHit}}) blurry images.  Answer the question the best that you can.
+                    <br>
+                    <ul>
+                        <li>If you take a wild guess, click <p-button styleClass="ui-button-danger" icon="far fa-fw fa-times-circle" label="Wild Guess"></p-button> to reduce the blurriness of the image and take another guess.</li>
+                        <li>If you are somewhat unsure if your answer is correct, click <p-button styleClass="ui-button-warning" label="Still Unsure" icon="far fa-fw fa-question-circle"></p-button> to reduce the blurriness of the image and take another guess.</li>
+                        <li><b>When</b> you are confident your answer is correct, click <p-button styleClass="ui-button-success" icon="far fa-fw fa-check-circle" label="I'm Confident"></p-button> to see the correct answer and the unblurred image. <b>Don’t click <p-button styleClass="ui-button-success" icon="far fa-fw fa-check-circle" label="I'm Confident"></p-button> until you are sure of the answer.</b> The game will remain paused until you click <p-button icon="far fa-fw fa-arrow-alt-circle-right" label="Proceed to next question"></p-button></li>
+                        <li>If you want to answer the question with a number, use digits like "0, 1, 2" instead of "zero, one, two"</li>
+                    </ul>  
+                </div>
+                <div *ngIf="!isNoModality()">
+                    For this task you will help a robot answer questions about ({{questionsPerHit}}) blurry images. 
+                    <br>
+                    <ul>
+                        <!-- <li *ngIf="isAnswerModality()">To help you out, we have provided a smart robot who can see the unblurred image and who will provide its best answer to the question (The robot may be wrong!) You can use the robot's answer to help you decide how to answer the question.</li> -->
+                        <li *ngIf="isAnswerModality()">A thing to know: the robot sees the unblurred image but it still makes mistakes.  You can use the robot's answer or override it with one of your own.</li>
+                        <!-- <li *ngIf="isExplanationModality()">To help you out, we have provided a smart robot who can see the unblurred image and who will provide its best answer and explanation to the question (The robot may be wrong!) You can use the robot's answer and its explanation to help you decide how to answer the question.</li> -->
+                        <li *ngIf="isExplanationModality() || isComponentModality() || isComponentMaskModality()">A thing to know: the robot sees the unblurred image but it still makes mistakes.  To help you decide whether or not to trust the robot, it will explain why it gave its answer. You can use the robot's answer or override it with one of your own.</li>
+                        <!-- <li *ngIf="isComponentModality() || isComponentMaskModality()">To help you out, we have provided a smart robot who can see the unblurred image and who will provide its best answer to the question (The robot may be wrong!) The robot will also list relevant parts of the image that it recognized.  You can use the robot's answer and its explanation to help you decide how to answer the question.</li> -->
+                        <!-- <li *ngIf="isComponentModality() || isComponentMaskModality()">A thing to know: the robot sees the unblurred image but it still makes mistakes.  To help you decide whether or not to trust the robot, it will explain why it gave its answer. You can use the robot's answer or override it with one of your own.</li> -->
+                        <!-- <li>Enter your answer/guess in the textbox and click <p-button styleClass="ui-button-success" icon="far fa-fw fa-check-circle" label="Submit Answer"></p-button> to see the correct answer and the unblurred image. The game will remain paused until you click <p-button icon="far fa-fw fa-arrow-alt-circle-right" label="Proceed to next question"></p-button></li> -->
+                        <li>If you believe the robot answered the question correctly click <p-button  styleClass="ui-button-success" icon="far fa-fw fa-check-circle" label="Agree with robot's answer"></p-button></li>
+                        <li>If you believe the robot answered the question incorrectly click <p-button styleClass="ui-button-danger" icon="far fa-fw fa-times-circle" label="Override robot's answer"></p-button>    The image will then be unblurred further and you will be given a chance to enter your answer.</li>
+                            
+                        <!-- <li>Just enter its answer (or your override) into the text box and click <p-button styleClass="ui-button-success" icon="far fa-fw fa-check-circle" label="Submit Answer"></p-button> You will then see the unblurred image and the correct answer.  The game will remain paused while you answer a couple of follow up questions and then click <p-button icon="far fa-fw fa-arrow-alt-circle-right" label="Proceed to next question"></p-button></li> -->
+                        <!-- <li>If you want to answer the question with a number, use digits like "0, 1, 2" instead of "zero, one, two"</li> -->
+                        <li>If the answer is a number, please use digits like "0, 1, 2" instead of words like "zero, one, two"</li>
+                    </ul>   
+                </div>
+                You have to complete ({{questionsPerHit}}) questions and you can only do ({{getHitsAllowed()}}) HIT.
+                <br>
+                You can earn a bonus up to ${{maxBonusPayout | number : '1.2-2'}} depending on your accuracy.
+                <ol>
+                    <li>You receive 3 points toward your bonus for not overriding, if the robot was correct.</li>
+                    <li>You receive 2 points toward your bonus for overriding, if the robot was wrong.</li>
+                    <li>You receive 1 point toward your bonus for entering the correct answer after you override (even if you change your mind, after seeing the less blurry image, and enter the robot's answer, if that answer was correct).</li>
+                </ol>                
+            </div>
+            
+            <div *ngIf="isGeMode()">                
+                <br>
+                <ng-container *ngTemplateOutlet="geInstructions;"></ng-container>                
+            </div>
+        </h4>
+    </div>
+    <p-footer *ngIf="turkerAcceptedAssigment()">
+        <div style="text-align: center;">
+            <button type="button" pButton icon="pi pi-check" (click)="showPreamble=false; startSession();" label="Begin"></button>
+        </div>
+    </p-footer>
+</p-dialog>
+
+<p-dialog [(visible)]="showGameComplete" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="false" [style]="{'z-index' : '999', 'max-width' : '900px'}">
+    <!-- <p-header>
+        <i class="fas fa-trophy"></i>
+        Congrats!!!
+        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+            <p-button (onClick)="resetWorkerId()" icon="fas fa-fw fa-undo" label="Reset worker Id ({{getWorkerId()}})" tooltipPosition="left"></p-button>
+        </span>
+    </p-header>
+    <div>
+        <h4>
+             You have completed every question for this assignment.
+             <br>
+             <br>
+             You can now close your browser.
+        </h4>
+        <br>
+        Your stats:
+        <br>
+        Total Questions Answered: {{blurQuestion.completedTotal}}
+        <br>
+        Percent Correct: {{blurQuestion.answersCorrect / blurQuestion.completedTotal | percent}}
+        <br>
+        HITs Completed: {{getHitsCompleted()}} of {{getHitsAllowed()}}
+    </div>    -->
+    <p-header>
+        <i class="far fa-frown"></i>
+        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+            <p-button (onClick)="resetWorkerId()" icon="fas fa-fw fa-undo" label="Reset worker Id ({{getWorkerId()}})" tooltipPosition="left"></p-button>
+        </span>
+    </p-header>
+    <div style="margin: 15px;">
+        <h4>                      
+            Sorry. You will not be able to complete this HIT because you have already participated in a previous EQUAS-2 experiment.             
+            <br>
+            <br>
+            You can now close your browser.
+            <br>
+        </h4>        
+    </div>   
+</p-dialog>
+
+<p-dialog [(visible)]="showAlreadyParticipated" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="false" [style]="{'z-index' : '999', 'max-width' : '900px'}">
+    <p-header>
+        <i class="far fa-frown"></i>
+        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+            <p-button (onClick)="resetWorkerId()" icon="fas fa-fw fa-undo" label="Reset worker Id ({{getWorkerId()}})" tooltipPosition="left"></p-button>
+        </span>
+    </p-header>
+    <div style="margin: 15px;">
+        <h4>                      
+            Sorry. You will not be able to complete this HIT because you have already participated in a previous EQUAS-2 experiment.             
+            <br>
+            <br>
+            You can now close your browser.
+            <br>
+        </h4>        
+    </div>   
+</p-dialog>
+
+<div *ngIf="loadComplete && !showGameComplete">
+    <div class="ui-g-12 ui-md-7 ui-g-nopad">
+        <div class="ui-g">
+            <div class="ui-g-12 ui-md-12">
+                <p-panel>
+                    <p-header>
+                        <i class="far fa-image"></i>
+                        <!-- {{currentAnnotation.question_id}} -->
+                        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+                            <a href="./#/global-explanation/{{currentAnnotation.question_id}}/view" target="_blank" pTooltip="Open in a new browser tab.">
+                                {{currentAnnotation.question_id}}
+                            </a>
+                            Blurriness : {{blurAmount}}%
+                        </span>
+                        <div style="float: right; text-align: center;">
+                            <span *ngIf="isNoModality()">Blurriness : {{blurAmount}}%</span>
+                            <p-slider *jhiHasAnyAuthority="'ROLE_ADMIN'" (click)="$event.stopPropagation();" [style]="{'width':'250px','margin-top':'8px'}" [(ngModel)]="blurAmount" [min]="0" [max]="blurMax" [step]="1" tooltipPosition="top"></p-slider>
+                        </div>
+                    </p-header>
+                    <div style="overflow: hidden; text-align: center" [ngStyle]="{ 
+                        'max-height': '85vh'
+                        }">
+                        <div [hidden]="blurStrategy === 'Downsample'" #imgBlurGaussian [ngStyle]="{ 
+                            'height': '85vh', 
+                            'background-image': 'url(/evaluation_dataset/v2_coco/training/images/' + currentAnnotation.imageName + ')',
+                            'background-repeat' : 'no-repeat', 
+                            'background-position' : 'top', 
+                            'background-size' : 'contain', 
+                            'filter': getBlurStyle(), 
+                            '-webkit-filter': getBlurStyle()
+                        }">
+                        </div>
+
+                        <img hidden id="sourceImage" src="/evaluation_dataset/v2_coco/training/images/{{currentAnnotation.imageName}}" (load)="showProgressSpinner=false;applyPixelateFilter(true)" (error)="clearPixelateFilter()" style="max-height: 85vh; z-index:1; height: 100%; width: 100%; object-fit: contain;">
+
+                        <img *ngIf="isComponentMaskModality() || isExplanationModality()" [hidden]="!showComponentOverlay" #componentOverlay 
+                        [style.left.px]="downSampleCanvas.offsetLeft" 
+                        [style.top.px]="downSampleCanvas.offsetTop" 
+                        [style.width.px]="downSampleCanvas.width" 
+                        [style.height.px]="downSampleCanvas.height"                         
+                        src="{{imageOverlayUrl()}}" style="position:absolute; z-index:1; object-fit: contain;">
+
+                        <canvas #downSampleCanvas [hidden]="blurStrategy === 'Gaussian'" id="imgBlurDownsample"></canvas>
+                        <!-- <canvas [hidden]="blurStrategy === 'Gaussian'" id="imgBlurDownsample" style="height: 85vh; height: 100%; width: 100%; object-fit: contain;"></canvas> -->
+                    </div>
+                </p-panel>
+            </div>
+        </div>
+    </div>
+    <div class="ui-g-12 ui-md-5">
+        <p-panel>
+            <p-header>
+                <i class="fa fa-fw fa-question-circle"></i>
+                <!-- <span *ngIf="!isMTurk()" >Question #{{allAnnotations.length - remainingAnnotations.length + 1}} of {{allAnnotations.length}}</span> -->
+                <span *ngIf="!isGamePaused()">Question #{{getCompletedCountForThisAssignment() + 1}} of {{questionsPerHit}}</span> 
+                <span *ngIf="isGamePaused()">Question #{{getCompletedCountForThisAssignment()}} of {{questionsPerHit}}</span> 
+                
+                <!-- <div style="float: right;">
+                    <span>HIT #{{ getHitsCompleted() }} of {{getHitsAllowed()}}</span>   
+                </div> -->
+                <p-button *ngIf="testLoopTimeout" (onClick)="stopTest()" icon="fa fa-fw fa-stop-circle" pTooltip="Stop e2e Test" tooltipPosition="left"></p-button>
+                <div *jhiHasAnyAuthority="'ROLE_ADMIN'" style="float: right;">
+                    <p-button *ngIf="!testLoopTimeout" (onClick)="runTest(100)" icon="fa fa-fw fa-hammer" pTooltip="Run e2e Test" tooltipPosition="left"></p-button>
+                    <!-- <p-button [disabled]="questionIndex==0" (onClick)="getPreviousQuestion()" icon="fa fa-fw fa-backward" pTooltip="Previous Question" tooltipPosition="left"></p-button> -->
+                    <!-- <p-button [disabled]="annotationIndex==0" (onClick)="getPreviousImage()" icon="fa fa-fw fa-caret-left" pTooltip="Previous Image for this Question" tooltipPosition="left"></p-button> -->
+                    <!-- <p-button (onClick)="getNextImage()" icon="fa fa-fw fa-caret-right" pTooltip="Next Image for this Question" tooltipPosition="left"></p-button> -->
+                    <p-button (onClick)="getRandomUncompletedQuestion()" icon="far fa-fw fa-arrow-alt-circle-right" pTooltip="Get a question that hasn't been completed" tooltipPosition="left"></p-button>
+                    <!-- <p-button (onClick)="getNextQuestion()" icon="fa fa-fw fa-forward" pTooltip="Next Question" tooltipPosition="left"></p-button> -->
+                </div>
+            </p-header>
+            <h3 style="font-weight: bold;">
+                <span *ngIf="isMentalModeling()" style="font-weight: bold; font-size: 20px;">                    
+                    <!-- What answer do you think the smart robot gave for the following question: -->
+                    Do you think the smart robot answered the following question correctly?
+                    <br>
+                </span>
+                <!-- {{globalExplanationDataset.questionTableModel.dataset[this.questionIndex].question}}? -->
+                {{currentAnnotation.question}}?
+            </h3>
+            <h4 style="display: flex;" *ngIf="!isNoModality()">
+                <div *ngIf="(isAnswerModality() && isMentalModeling()) === false" style="font-size: 45px;margin-right: 10px;">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div style="align-self: center;">
+                    <div *ngIf="!isMentalModeling()" style="font-weight: bold;">Smart robot's answer: {{currentAnnotation.modelAnswer}}</div>
+                    <!-- <div id="robotExplanation" style="font-weight: bold;">Smart robot's explanation: <span [innerHTML]="currentAnnotation.explanationHtml | safe"></span></div> -->
+                    <div *ngIf="isExplanationModality()" style="font-weight: bold;">
+                        Smart robot's explanation: <span [innerHTML]="currentAnnotation.explanationHtml | safe"></span>
+                        <div style="font-size: large;">
+                            <p-checkbox [(ngModel)]="showComponentOverlay" binary="true" (onChange)="logComponentLayerToggle()" label="Show explanation outlines on image"></p-checkbox>   
+                        </div>
+                        
+                    </div>
+                    <div *ngIf="isComponentModality() || isComponentMaskModality()">
+                        <span style="font-weight: bold;">Smart robot's explanation:</span> Here is a list of components in the image that the robot thinks are important.
+                        <!-- <div style="font-size: large; max-height: 130px; white-space: nowrap; overflow: hidden;" [innerHTML]="componentExplanations[currentAnnotation.question_id].componentExplanationHtml | safe"></div> -->
+                        <div style="font-size: large;" >
+                            <div *ngFor="let component of currentAnnotation.componentExplanation" [style.color]="getComponentColor(component)" >
+                                <b>{{component.class}}</b>  : relevance = {{component.scoreSum | number}} 
+                            </div>
+                            <p-checkbox *ngIf="isComponentMaskModality()" [(ngModel)]="showComponentOverlay" binary="true" (onChange)="logComponentLayerToggle()" label="Show component outlines on image"></p-checkbox>   
+                        </div>
+                    </div>
+                </div>                
+            </h4>
+
+            <br *ngIf="!isGamePaused()">           
+            <div style="display: inline-block;">
+                <!-- <br> -->
+                <p-button *ngIf="!isGamePaused()" styleClass="ui-button-primary" icon="fas fa-fw fa-info-circle"  (onClick)="showPreamble=true;" label="Show Instructions"></p-button>
+                <!-- <div *ngIf="isNoModality() && !isGamePaused()" style="font-size: 16px;">Type your answer below. As you start typing, a list of possible answers will be displayed. Select your answer from the list.</div> -->
+
+                <!-- <div *ngIf="!isNoModality() && !isGamePaused()" style="font-weight: bold; font-size: 16px;">The robot is doing its best, but it may be wrong.</div> -->
+                <div *ngIf="isGeMode() && !isGamePaused()">
+                    <br>
+                    <ng-container *ngTemplateOutlet="geInstructions;"></ng-container>                
+                </div>      
+                <div *ngIf="!isNoModality() && !isMentalModeling() && !isGamePaused() && !showProgressSpinner" style="font-weight: bold; font-size: 20px;">
+                    <br>
+                    The robot is doing its best, but it may be wrong.
+                    <br>
+                    Do you think the smart robot answered the question correctly?                    
+                    <br>
+                    <div style="font-weight: normal; font-size: 16px;">
+                        Click <b>Agree with robot's answer</b> if you think the smart robot's answer of ({{currentAnnotation.modelAnswer}}) is correct.
+                        <br>
+                        Click <b>Override robot's answer</b>  if you think you can provide a better answer after seeing a less blurry version of the image.
+                    </div>
+                    <div (mouseover)="showComponentOverlay=false" (mouseleave)="showLogComponentLayerToggle()">
+                        <p-button id="bgAccept" [disabled]="userOverride" styleClass="ui-button-success" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="acceptRobotAnswer()" icon="far fa-fw fa-check-circle" label="Agree with robot's answer of ({{currentAnnotation.modelAnswer}})"></p-button>
+                        <p-button id="bgOverride" [disabled]="userOverride" styleClass="ui-button-danger" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="doUserOverride()" icon="far fa-fw fa-times-circle" label="Override robot's answer"></p-button>                                        
+                    </div>
+                </div>
+
+                <div *ngIf="isMentalModeling() && !isGamePaused() && !showProgressSpinner">
+                    <!-- <br>
+                    Click <b>Yes</b> if you think the smart robot answered the question <b>correctly</b>.
+                    <br>
+                    Click <b>No</b> if you think the smart robot answered the question <b>incorrectly</b>.
+                    <br>
+                    <p-button id="mmYes" styleClass="ui-button-success" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="mmRobotGotItCorrect()" icon="far fa-fw fa-check-circle" label="Yes"></p-button>
+                    <p-button id="mmNo" styleClass="ui-button-danger" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="mmRobotGotItWrong()" icon="far fa-fw fa-times-circle" label="No"></p-button> -->
+                    <br>
+                    Do you think the smart robot answered the question <b>correctly</b> or <b>incorrectly</b>?
+                    <br>
+                    <p-button id="mmYes" styleClass="ui-button-success" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="mmRobotGotItCorrect()" icon="far fa-fw fa-check-circle" label="Correctly"></p-button>
+                    <p-button id="mmNo" styleClass="ui-button-danger" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="mmRobotGotItWrong()" icon="far fa-fw fa-times-circle" label="Incorrectly"></p-button>                    
+                    <!-- <div>
+                        <br>
+                        A bonus of <b>${{bonusPay | number : '1.2-2'}}</b> will be paid for each correct answer you give.
+                        <br>
+                        Your current bonus is <b>${{blurQuestion.bonusPayTotal | number : '1.2-2'}}</b>
+                        <br>
+                        You can earn a bonus up to ${{maxBonusPayout | number : '1.2-2'}} depending on your accuracy.
+                        <br>
+                        Your current accuracy is {{blurQuestion.answersCorrect / blurQuestion.completedTotal | percent}}
+                    </div> -->
+                </div>
+
+                <div *ngIf="userOverride && !isGamePaused()" style="font-size: 16px;">Type your answer below. As you start typing, a list of possible answers will be displayed. Select your answer from the list.</div>
+                <br *ngIf="!isGamePaused()">         
+                <p-autoComplete id="txtAnswerInput" #answerInput *ngIf="messages.length === 0 && userOverride" [showTransitionOptions]="'0ms'" [hideTransitionOptions]="'0ms'" [(ngModel)]="selectedAnswer" [suggestions]="filteredAnswers" [autoHighlight]="true" (completeMethod)="filterAnswers($event)" [delay]="50" [forceSelection]="true" placeholder="Type your answer here" [minLength]="1" [inputStyle]="{'width':'100%', 'font-weight': 'bold', 'font-size': 'large'}" [style]="{'width':'100%'}"></p-autoComplete>
+                
+                <p-messages [(value)]="messages" [enableService]="false" [closable]="false"></p-messages>                
+
+                <div *ngIf="isMentalModeling() && !showProgressSpinner && !showRewardButton">
+                    You can earn a bonus up to <b>${{maxBonusPayout | number : '1.2-2'}}</b> depending on your accuracy.
+                    <br>
+                    Your current accuracy is <b>{{currentAccuracy() | percent}}</b>
+                </div>         
+                <div *ngIf="showRewardButton">                    
+                    Total questions answered: <b>{{blurQuestion.completedTotal}}</b>
+                    <br>
+                    Your accuracy: <b>{{blurQuestion.answersCorrect / blurQuestion.completedTotal | percent}}</b>
+                    <br>
+                    Your bonus: <b>${{blurQuestion.bonusPayTotal | number : '1.2-2'}}</b>
+                    <br>
+                    <!-- Percent Correct: {{blurQuestion.answersCorrect / blurQuestion.completedTotal | percent}} -->
+                    <!-- <br>
+                    HITs Completed: {{getHitsCompleted()}} of {{getHitsAllowed()}} -->                   
+                </div>      
+
+                <div *ngIf="allowFeedback && isGamePaused()">                    
+                    <div *ngIf="requireLikertQuestions()">
+                        <b>Answer the following survey questions and click the button below to continue</b>
+                        <div *ngFor="let likertQuestion of likertQuestions; let i = index">
+                            <label class="statement">{{i+1}}. {{likertQuestion.question}}</label>
+                            <ul class='likert'>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="5" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Strongly agree</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="4" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Agree</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="3" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Neutral</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="2" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Disagree</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="1" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Strongly disagree</label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <br>
+                    <textarea id="txtFeedback" maxlength="200" rows="2" type="text" class="form-control" [(ngModel)]="blurAnswer.feedback" placeholder="(Optional) Provide Feedback" pTooltip="(Optional) Leave a message for the developer. 200 character limit"></textarea>
+                    <br>
+                </div>
+                <div *ngIf="showProgressSpinner" style="text-align: center; z-index: 10000; margin: 25px;">
+                    <p-progressSpinner ></p-progressSpinner>
+                </div>
+                <p-button id="btnProceedToNextQuestion" *ngIf="messages.length > 0 && !showRewardButton && !showProgressSpinner"
+                    [disabled]="!hasUserAnsweredLikertQuestions()"
+                    (onClick)="getRandomUncompletedQuestion()"
+                    icon="far fa-fw fa-arrow-alt-circle-right"
+                    label="Proceed to next question">
+                </p-button>
+               
+                <p-button id="btnCollectReward" *ngIf="showRewardButton && !showProgressSpinner"
+                    [disabled]="!hasUserAnsweredLikertQuestions()" 
+                    styleClass="ui-button-success" 
+                    (onClick)="giveAssignmentReward()" 
+                    icon="fas fa-award" 
+                    label="Collect HIT Reward">
+                </p-button>   
+            </div>
+            
+            <div *ngIf="selectedAnswer && isNoModality()">
+                <br>
+                Your answer is <span style="font-weight: bold">{{selectedAnswer}}</span> at <span style="font-weight: bold">{{blurAmount}}%</span> blurriness.
+                <br>
+                <br>
+                Do you think you were able to answer the question correctly?
+                <br>
+                <div *ngIf="!isGamePaused() && !showProgressSpinner">
+                    <p-button styleClass="ui-button-danger" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="submitWildGuess()" icon="far fa-fw fa-times-circle"    label="Wild Guess"></p-button>
+                    <p-button styleClass="ui-button-warning" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="submitUnsureGuess()" icon="far fa-fw fa-question-circle" label="Still Unsure"></p-button>
+                    <p-button styleClass="ui-button-success" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="submitConfidentFinalAnswer()" icon="far fa-fw fa-check-circle"    label="I'm Confident"></p-button>
+                </div>                
+            </div>
+
+            <div *ngIf="selectedAnswer && !isNoModality()">
+                <br>
+                Your answer is <span style="font-weight: bold">{{selectedAnswer}}</span>                
+                <br>
+                Click the button below to submit your answer.
+                <br>
+                <div (mouseover)="showComponentOverlay=false" (mouseleave)="showLogComponentLayerToggle()">
+                    <p-button *ngIf="!isGamePaused() && !showProgressSpinner" id="btnSubmitAnswer" styleClass="ui-button-success" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="submitOverrideAnswer()" icon="far fa-fw fa-check-circle"    label="Submit Answer"></p-button>
+                </div>
+            </div>
+                   
+            <!-- A hack when running inside Amazon Mechanical Turk that prevents the user from accidentally tabbing onto the AMT Return button -->
+            <button type="button" style="background: transparent;border: none !important;font-size:0;"></button>
+            <button type="button" style="background: transparent;border: none !important;font-size:0;"></button>
+            <button type="button" style="background: transparent;border: none !important;font-size:0;"></button>
+        </p-panel>
+    </div>
+    <!-- <div *jhiHasAnyAuthority="'ROLE_ADMIN'" class="ui-g-12 ui-md-5">
+        <p-panel [toggleable]="true">
+            <p-header>
+                <i class="fas fa-history"></i>
+                Answer History
+            </p-header>
+            <div *ngFor="let bah of blurAnswerHistory">
+                {{bah.qId}} - {{bah.answer}} - {{bah.attempts}}
+            </div>
+        </p-panel>
+    </div> -->
+  
+   
+    <div *jhiHasAnyAuthority="'ROLE_ADMIN'" class="ui-g-12 ui-md-5">
+        <p-panel [toggleable]="true">
+            <p-header>
+                <i class="fas fa-info-circle"></i>
+                Image stats
+            </p-header>
+            <div style="z-index: 999;display: grid; color: white; text-align: left; margin: 4px; padding: 4px; border-radius: 8px; background-color: #00000082;">
+                <!-- <p-selectButton [options]="blurOptions" [(ngModel)]="blurStrategy"></p-selectButton> -->
+                <div *ngIf="blurStrategy === 'Downsample'">
+                    Resolution: {{pixelateFilter.newWidth}} x {{pixelateFilter.newHeight}} / {{pixelateFilter.originalWidth}} x {{pixelateFilter.originalHeight}}
+                    <br>
+                    Pixels: {{pixelateFilter.newPixelCount()}} / {{pixelateFilter.originalPixelCount()}} = {{pixelateFilter.pixelReductionPercent() | percent : '1.1-2'}}
+                    <br>
+                    Scale: {{pixelateFilter.downSampleScale | percent : '1.1-2'}}
+                    <!-- 
+                    Constrained size:  {{pixelateFilter.constrainedWidth()}} x {{pixelateFilter.constrainedHeight()}}
+                    <br>
+                    Gaussian Estimate: {{guassianEstimation() | percent : '1.1-2'}} -->
+                    <br>
+                    <!-- Smoothing Factor: {{blurSmoothing}}%
+                    <p-slider [(ngModel)]="blurSmoothing" [min]="0" [max]="100"></p-slider> -->
+                    Smoothing Radius: {{pixelateFilter.blurRadius | number}}
+                </div>
+            </div>
+        </p-panel>
+    </div>
+    <div *jhiHasAnyAuthority="'ROLE_ADMIN'" class="ui-g-12 ui-md-5">
+        <p-panel [toggleable]="true" [(collapsed)]="collapseAnswerPanel">
+            <p-header>
+                <i class="fas fa-info-circle"></i>
+                Answer
+            </p-header>
+            <h4>
+                Top Turker Answer: {{currentAnnotation.topAnswer}}
+                <br>
+                Model Answer: {{currentAnnotation.modelAnswer}}
+            </h4>
+            <!-- -Detractor Answers-
+            <div *ngFor="let answer of globalExplanationDataset.questionTableModel.dataset[this.questionIndex].answers">
+                {{answer.answer}}
+            </div> -->
+        </p-panel>
+    </div>
+
+    <form id='mturk_form' action="MTURK_FORM_TO_SUBMIT" method="POST">
+        <input type="hidden" id="assignmentId" name="assignmentId" [ngModel]="route.snapshot.queryParams['assignmentId']">
+        <input type="hidden" id="workerId" name="workerId" [ngModel]="route.snapshot.queryParams['workerId']">
+        <!-- <input type="hidden" id="hitDuration" name="hitDuration" value='HIT_DURATION'>
+        <input type="hidden" id="hitResult" name="hitResult" value='HIT_RESULT'>
+        <input type="hidden" id="hitComment" name="hitComment" value='HIT_COMMENT'> -->
+    </form>
+        
+</div>

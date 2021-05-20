@@ -1,0 +1,20 @@
+.toolbutton {
+    cursor: pointer;
+    border: 2px solid #363636;
+    border-radius: 5px;
+    padding: 2px;
+    margin-right: 5px;
+}
+
+.strike {
+    position: relative;
+}
+
+.strike::after {
+    content: '';
+    border-bottom: 2px solid red;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+}

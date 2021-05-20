@@ -1,0 +1,321 @@
+<style>
+    .pop {
+        display: table;
+        width: 100%;
+        border: 1px solid #c9c9c9;
+        /* display: flex; */
+        font-size: 14px;
+        font-weight:bold;
+        padding: 4px;
+    }
+
+    /* Animate items as they're being sorted. */
+    .cdk-drop-list-dragging .cdk-drag {
+        transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+    }
+
+    /* Animate an item that has been dropped. */
+    .cdk-drag-animating {
+        transition: transform 300ms cubic-bezier(0, 0, 0.2, 1);
+    }
+</style>
+<ng-template #grade>
+
+    <div style="font-size: 18px; font-weight: bold;">
+        <div>
+            <div>
+                <div *ngIf="oneShotAnswer.correctAnswer">
+                    <span style= "font-size: 24px; background-color: #212529; border-radius: 4px; padding: 4px;">
+                        <span style="color: #3CE91A;padding: 5px;"><i class="fas fa-laugh"></i></span>
+                    </span>
+                    &nbsp; Good job! You removed the correct defective feature ({{oneShotAnswer.distractorLabel}}).
+                </div>
+
+                <div *ngIf="!oneShotAnswer.correctAnswer">
+                    <span style= "font-size: 24px; background-color: #212529; border-radius: 4px; padding: 4px;">
+                        <span style="color: #F7D701;padding: 5px"><i class="fas fa-meh"></i></span>
+                    </span>
+                    &nbsp; Oops! You removed ({{oneShotAnswer.excludedLabel}}). The defective feature was actually ({{oneShotAnswer.distractorLabel}}).
+                </div>              
+            </div>
+        </div>
+    </div>
+</ng-template>
+<!-- <p-sidebar [(visible)]="showVisualWord" [modal]="false" position="top" [showCloseIcon]="false" [style]="{height:'130px', overflow: 'hidden',  color: 'rgba(255, 255, 255)', 'background-color' : '#272b30', border: 'none', padding: 0}" [baseZIndex]="10000">
+    <div *ngIf="exampleImageRankings" >
+        <div *ngIf="showUnit" style="text-align: center; font-size: 18px; font-weight: bold;">Visual examples of ({{showUnit.label}})</div>
+        <div *ngFor="let unit of exampleImageRankings.units; let i = index">
+            <div *ngIf="i < maxUnits && unit.unit !== -999">
+                <img  [hidden]="unit !== showUnit" src="/evaluation_dataset/one_shot/image/unit{{unit.unit}}.jpg"/>
+            </div>            
+        </div>
+    </div>
+</p-sidebar> -->
+<p-toast position="center" [baseZIndex]="99999"></p-toast>
+<p-confirmDialog header="Confirmation" icon="pi pi-exclamation-triangle"></p-confirmDialog>
+<p-confirmDialog header="" key="Info" icon="pi pi-exclamation-triangle"></p-confirmDialog>
+<div *ngIf="showProgressSpinner" style="text-align: center;
+            z-index: 10000;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 100%;
+            background-color: #949494d1;">
+    <p-progressSpinner ></p-progressSpinner>
+    <div style="font-size: xx-large;">{{progressSpinnerMessage}}</div>
+</div>
+
+<p-dialog [(visible)]="showPreamble"(onHide)="startSession();" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="turkerAcceptedAssigment()" [style]="{'z-index' : '995', 'max-width' : '900px'}">
+    <p-header>
+        <i class="fas fa-info-circle"></i>
+        Instructions
+        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+            <p-button (onClick)="resetWorkerId()" icon="fas fa-fw fa-undo" label="Reset worker Id ({{getWorkerId()}})" tooltipPosition="left"></p-button>
+        </span>
+    </p-header>
+    <div>
+        <h4>
+            <!-- One-Shot Instructions -->
+            <div>
+                Welcome to the One-Shot Picture game.
+                <br>
+                <br>
+                <div>
+                    You will help a robot learn to recognize something brand new from one picture in this game.
+                    <ul>
+                        <li>You will see the one picture that the robot is trying to learn from.</li>
+                        <li>The robot will show you a list of five features it thinks it can see in that picture.</li>
+                        <li>Remove the one feature (by clicking it) that you think is defective or not useful for the robot to learn about the new concept.
+                            <ul>
+                                <li>Hovering over a feature in the list will highlight the region of the image where the robot saw this feature.</li>
+                                <li>A picture might have duplicate feature names, but each feature will highlight differents regions of the picture.</li>
+                                <li>If a feature highlights a relevant region of the picture, it is less likely to be defective.</li>
+                              </ul>
+                        </li>
+                        <!-- <li>Hovering over a feature in the list will highlight the region of the image where the robot saw this feature. A picture might have duplicate feature names, but each feature will highlight differents regions of the picture. If a feature highlights a relevant region of the picture, it is less likely to be defective.</li> -->
+                        <li>Then answer a couple of questions about how you think you performed.</li>
+                        <li>You will be told if you picked the right (defective) feature and told what the correct answer is.</li>
+                        <li>You then move on to the next example.</li>
+                    </ul>
+                    You have to complete (17) rounds and you can only do (1) HIT.
+                </div>
+            </div>            
+        </h4>
+    </div>
+    <p-footer *ngIf="turkerAcceptedAssigment()">
+        <div style="text-align: center;">
+            <button type="button" pButton icon="pi pi-check" (click)="showPreamble=false; startSession();" label="Close"></button>
+        </div>
+    </p-footer>
+</p-dialog>
+
+<p-dialog [(visible)]="showGameComplete" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="false" [style]="{'z-index' : '999', 'max-width' : '900px'}">
+    <p-header>
+        <i class="fas fa-trophy"></i>
+        Congrats!!!
+        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+            <p-button (onClick)="resetWorkerId()" icon="fas fa-fw fa-undo" label="Reset worker Id ({{getWorkerId()}})" tooltipPosition="left"></p-button>
+        </span>
+    </p-header>
+    <div>
+        <h4>
+             You have completed this assignment.
+             <br>
+             <br>
+             You can now close your browser.
+        </h4>
+    </div>
+</p-dialog>
+
+<p-dialog [(visible)]="showAlreadyParticipated" [responsive]="true" [blockScroll]="true" [modal]="true" [draggable]="false" [blockScroll]="true" [closable]="false" [style]="{'z-index' : '999', 'max-width' : '900px'}">
+    <p-header>
+        <i class="far fa-frown"></i>
+        <span *jhiHasAnyAuthority="'ROLE_ADMIN'">
+            <p-button (onClick)="resetWorkerId()" icon="fas fa-fw fa-undo" label="Reset worker Id ({{getWorkerId()}})" tooltipPosition="left"></p-button>
+        </span>
+    </p-header>
+    <div style="margin: 15px;">
+        <h4>                      
+            Sorry. You will not be able to complete this HIT because you have already participated in a previous EQUAS-2 experiment.             
+            <br>
+            <br>
+            You can now close your browser.
+            <br>
+        </h4>        
+    </div>   
+</p-dialog>
+<br>
+<br>
+<div *ngIf="loadComplete && !showGameComplete">
+     <div class="ui-g-12 ui-md-5 ui-g-nopad">
+        <div class="ui-g">
+            <div class="ui-g-12 ui-md-12">
+                <p-panel>
+                    <p-header>
+                        <i class="far fa-image"></i>                        
+                        <span>{{exampleImages[exampleImageIndex]}}</span>                      
+                    </p-header>
+                    <div style="overflow: hidden; text-align: center" [ngStyle]="{ 
+                        'max-height': '85vh'
+                        }">
+                        <!-- show pre-loaded saliency map -->
+                        <div [hidden]="!showVisualWord"  *ngFor="let unit of exampleImageRankings.units; let i = index">
+                            <div *ngIf="i < maxUnits && unit.unit !== -999">
+                                <img  [hidden]="unit !== showUnit" src="/evaluation_dataset/one_shot_v3/saliency_map/{{exampleImages[exampleImageIndex]}}/unit_{{unit.unit}}.jpeg" style="max-height: 85vh; z-index:1; height: 100%; width: 100%; object-fit: contain;">
+                                <!-- <img  [hidden]="unit !== showUnit" src="/evaluation_dataset/one_shot/saliency_map_OLD/{{exampleImages[exampleImageIndex]}}/unit_{{unit.unit}}.jpeg" style="max-height: 85vh; z-index:1; height: 100%; width: 100%; object-fit: contain;"> -->
+                            </div>            
+                        </div>
+                        <!-- show default image class -->
+                        <img [hidden]="showVisualWord" id="sourceImage" src="/evaluation_dataset/one_shot_v3/class_images/{{exampleImages[exampleImageIndex]}}.jpg" (load)="showProgressSpinner=false;" style="max-height: 85vh; z-index:1; height: 100%; width: 100%; object-fit: contain;">
+                    </div>                    
+                </p-panel>
+            </div>
+        </div>
+    </div>
+    <div class="ui-g-12 ui-md-7">
+        <p-panel>
+            <p-header>
+                <i class="fa fa-fw fa-list"></i>
+                <p-button *ngIf="testLoopTimeout" (onClick)="stopTest()" icon="fa fa-fw fa-stop-circle" pTooltip="Stop e2e Test" tooltipPosition="left"></p-button>                
+                Round: {{getCompletedTrialCount()}} of {{this.exampleImages.length}}
+                <div *jhiHasAnyAuthority="'ROLE_ADMIN'">
+                    <a *ngFor="let img of exampleImages; let i = index" (click)="exampleImageIndex=i-1;getNextTrial(false)"  [style.color] = "exampleImageIndex===i ? 'blue' : 'black'">{{img}},&nbsp;&nbsp;</a>
+                </div>
+                
+            </p-header>           
+            <h4 style="display: flex;" *ngIf="!isNoModality()">
+               
+                <div style="align-self: center;">
+                   
+                    <div *ngIf="isComponentModality() || isComponentMaskModality()">
+                        <p-button id="btnShowInstructions" styleClass="ui-button-warning"  icon="fas fa-fw fa-info-circle"  (onClick)="showPreamble=true;" label="Show Instructions"></p-button>
+                        <span *jhiHasAnyAuthority="'ROLE_ADMIN'" >Max items: <input type="number" [size]="3" pInputText [(ngModel)]="maxUnits" [min]="5" [max]="this.exampleImageRankings.units.length -1" required></span>
+                  
+                        <div [style.opacity]="allowImageSelection() ? 1 : .6">
+                            <!-- Sort the list of features below in the order that you think would be most important for a Robot to learn about <b>{{getCategory()}}</b>. -->
+                            Below is a list of five features that the Robot sees in the picture. Remove the one feature (by clicking it) that you think is defective or not useful for the robot to learn about <b>{{getCategory()}}</b>.
+                            <br>
+                            <br>
+                            <div style="font-weight: bold; font-size: 16px;">                                
+                                Hovering over each feature in the list will show you how the robot sees that same feature in other pictures.
+                                <br>
+                                <br>
+                            </div>
+                            <div style="display: flex" >
+                                <div cdkDropList [cdkDropListData]="exampleImageRankings.units" #firstList="cdkDropList"  [cdkDropListDisabled]="true" (cdkDropListDropped)="drop($event);">
+                                    <div *ngFor="let unit of exampleImageRankings.units.slice(0, this.maxUnits); let i = index" class="pop" (mouseover)="showUnitImage(unit, $event)" (mouseleave)="hideUnitImage(unit, $event)"  pTooltip="{{featureTooltip(unit)}}" (click)="excludeUnit(unit);"  style="cursor: pointer;" cdkDrag>
+                                    #{{i + 1}}&nbsp;&nbsp;&nbsp;&nbsp; <span [class]="unit.excluded ? 'strike' : ''">{{unit.label}}</span>
+                                    </div>
+                                </div>
+                            </div>              
+                        </div>                        
+                    </div>
+                </div>                
+            </h4>
+
+            <!-- <br *ngIf="!isGamePaused()">            -->
+            <div style="display: inline-block;">
+                <div *ngIf="imageChosen && !isNoModality() && !isMentalModeling() && !isGamePaused() && !showProgressSpinner" style="font-size: 24px;">
+                    <div>
+                        After removing a feature, click this button to proceed.
+                        <br>
+                        <p-button [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="saveRanking(true)" icon="far fa-fw fa-check-circle" label="Submit"></p-button>
+                        <p-button  *jhiHasAnyAuthority="'ROLE_ADMIN'" [style.marginRight]="'10px'" [style.marginBottom]="'10px'" (onClick)="saveRanking(false)" icon="fas fa-fw fa-download" label="Save Ranking"></p-button>
+                    </div>    
+                </div>
+
+                <div *ngIf="userOverride && !isGamePaused()" style="font-size: 16px;">Type your answer below. As you start typing, a list of possible answers will be displayed. Select your answer from the list.</div>
+                <br *ngIf="!isGamePaused()">         
+                <p-autoComplete id="txtAnswerInput" #answerInput *ngIf="messages.length === 0 && userOverride" [showTransitionOptions]="'0ms'" [hideTransitionOptions]="'0ms'" [(ngModel)]="selectedAnswer" [suggestions]="filteredAnswers" [autoHighlight]="true" (completeMethod)="filterAnswers($event)" [delay]="50" [forceSelection]="true" placeholder="Type your answer here" [minLength]="1" [inputStyle]="{'width':'100%', 'font-weight': 'bold', 'font-size': 'large'}" [style]="{'width':'100%'}"></p-autoComplete>
+                
+                <!-- <p-messages [(value)]="messages" [enableService]="false" [closable]="false"></p-messages>                 -->
+
+                <div [hidden]="showScore" *ngIf="allowFeedback && isGamePaused()">                    
+                    <div *ngIf="requireLikertQuestions()">
+                        <b>Answer the following survey questions and click the button below to continue</b>
+                        <div *ngFor="let likertQuestion of likertQuestions; let i = index">
+                            <label class="statement">{{i+1}}. {{likertQuestion.question}}</label>
+                            <ul class='likert'>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="5" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Strongly agree</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="4" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Agree</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="3" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Neutral</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="2" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Disagree</label>
+                                </li>
+                                <li>
+                                    <p-radioButton [name]="likertQuestion.id" value="1" [(ngModel)]="likertQuestion.userSelection"></p-radioButton>
+                                    <label>Strongly disagree</label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <br>
+                </div>
+
+                <div [hidden]="showScore" *ngIf="messages.length > 0  && !showProgressSpinner" style="font-size: 24px;">
+                    Click this button to show your score.
+                    <br>
+                    <p-button id="btnShowScore" 
+                        [disabled]="!hasUserAnsweredLikertQuestions()"
+                        (onClick)="showScore = true"
+                        icon="far fa-fw fa-arrow-alt-circle-right"
+                        label="Show score"
+                        pTooltip="{{hasUserAnsweredLikertQuestionsToolTip()}}"> 
+                    </p-button>
+                </div>
+                <div *ngIf="showScore">
+                    <ng-container *ngTemplateOutlet="grade;"></ng-container>
+
+                    <div *ngIf="messages.length > 0 && !showRewardButton && !showProgressSpinner" style="font-size: 24px;">
+                        Click this button to proceed.
+                        <br>
+                        <p-button id="btnProceedToNextQuestion" 
+                            [disabled]="!hasUserAnsweredLikertQuestions()"
+                            (onClick)="getNextTrial(true)"
+                            icon="far fa-fw fa-arrow-alt-circle-right"
+                            label="Proceed to next image">
+                        </p-button>
+                    </div>
+                   
+                   <div *ngIf="showRewardButton && !showProgressSpinner" style="font-size: 24px;">
+                    Click this button to collect HIT reward and exit.
+                    <br>
+                    <p-button id="btnCollectReward" 
+                        [disabled]="!hasUserAnsweredLikertQuestions()" 
+                        styleClass="ui-button-success" 
+                        (onClick)="giveAssignmentReward()" 
+                        icon="fas fa-award" 
+                        label="Collect HIT Reward">
+                    </p-button>
+                   </div>  
+                </div>          
+            </div>
+                       
+                   
+            <!-- A hack when running inside Amazon Mechanical Turk that prevents the user from accidentally tabbing onto the AMT Return button -->
+            <button type="button" style="background: transparent;border: none !important;font-size:0;"></button>
+            <button type="button" style="background: transparent;border: none !important;font-size:0;"></button>
+            <button type="button" style="background: transparent;border: none !important;font-size:0;"></button>
+        </p-panel>
+    </div>
+          
+    <form id='mturk_form' action="MTURK_FORM_TO_SUBMIT" method="POST">
+        <input type="hidden" id="assignmentId" name="assignmentId" [ngModel]="route.snapshot.queryParams['assignmentId']">
+        <input type="hidden" id="workerId" name="workerId" [ngModel]="route.snapshot.queryParams['workerId']">
+        <!-- <input type="hidden" id="hitDuration" name="hitDuration" value='HIT_DURATION'>
+        <input type="hidden" id="hitResult" name="hitResult" value='HIT_RESULT'>
+        <input type="hidden" id="hitComment" name="hitComment" value='HIT_COMMENT'> -->
+    </form>
+        
+</div>

@@ -1,0 +1,82 @@
+version: '2.3'
+services:
+    xai-equas:
+        container_name: xai-equas
+        image: xai-equas
+        build: EQUAS
+        environment:
+            - EUREKA_CLIENT_ENABLED=true
+            - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://admin:$${jhipster.registry.password}@jhipster-registry:8761/eureka
+            - SPRING_CLOUD_CONFIG_URI=http://admin:$${jhipster.registry.password}@jhipster-registry:8761/config
+            - JHIPSTER_REGISTRY_PASSWORD=admin
+            - SPRING_PROFILES_ACTIVE=dev,swagger
+            - SERVER_PORT=8190
+            - SPRING_DATA_MONGODB_URI=mongodb://xai-mongodb:27017
+            - SPRING_DATA_MONGODB_DATABASE=XAI
+            - JHIPSTER_SLEEP=5
+            - APPLICATION_EVALUATION_DATASET_ROOT_PATH=/evaluation_dataset/
+            - APPLICATION_FAITHFUL_VQA_SERVER_HOST_ADDRESS=xai-faithful
+            - APPLICATION_FAITHFUL_VQA_SERVER_HOST_PORT=8290            
+            - APPLICATION_VQA_SERVER_HOST_ADDRESS=xai-hiecoattenvqa
+            - APPLICATION_VQA_SERVER_HOST_PORT=8088            
+            # - APPLICATION_NLG_SERVER_HOST_ADDRESS=xai-hiecoattenvqa
+            # - APPLICATION_NLG_SERVER_HOST_PORT=8089
+            # - APPLICATION_VQA_SERVER_HOST_ADDRESS=128.89.77.64 #REDBOX
+        ports:
+            - 8190:8190
+        volumes:            
+            - ../evaluation_dataset:/evaluation_dataset
+
+    xai-utilities-service-app:
+        container_name: xai-utilities-service
+        build:
+            context: ../utilitiesService
+            args:
+                include_models: ""
+        image: xai-utilities-service:latest
+        environment:
+            #   ALLOW_EMPTY_PASSWORD is recommended only for development
+            - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://admin:admin@jhipster-registry:8761/eureka
+            - SPRING_CLOUD_CONFIG_URI=http://admin:admin@jhipster-registry:8761/config
+            - SPRING_DATA_MONGODB_URI=mongodb://xai-mongodb:27017/
+            - RUNNING_IN_DOCKER=True
+            - JHIPSTER_SLEEP=0
+            - JHIPSTER_REGISTRY_PASSWORD=admin
+            - FLASK_DEBUG=False
+            - PREFERRED_SUBNET=172
+        ports:
+            - 8195:8195
+        volumes:            
+            - ../evaluation_dataset:/evaluation_dataset
+
+    jhipster-registry:
+        container_name: xai-jhipster-registry
+        image: jhipster/jhipster-registry:v4.1.1
+        mem_limit: 600m
+        environment:
+            - LOG_LEVEL_ROOT=WARN
+            - SPRING_MAIN_BANNER_MODE=off
+            - SPRING_PROFILES_ACTIVE=composite,prod,swagger
+            - SECURITY_USER_PASSWORD=admin
+            - JHIPSTER_REGISTRY_PASSWORD=admin
+            - JHIPSTER_LOGGING_LOGSTASH_ENABLED=true
+            - JHIPSTER_LOGGING_LOGSTASH_HOST=jhipster-logstash
+            - JHIPSTER_METRICS_LOGS_ENABLED=true
+            - JHIPSTER_METRICS_LOGS_REPORTFREQUENCY=60
+        ports:
+            - 8761:8761
+            
+    xai-mongodb:
+        container_name: xai-mongodb
+        image: mongo
+        ports:
+            - 27017:27017
+        volumes:            
+            - "mongo_data:/data"
+        
+volumes:
+    evaluation_dataset:
+        driver: local
+    mongo_data:
+        driver: local
+          

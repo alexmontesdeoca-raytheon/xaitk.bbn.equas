@@ -1,0 +1,22 @@
+
+{
+    "equasApp": {
+        "globalExplanation" : {
+            "home": {
+                "title": "GlobalExplanations",
+                "createLabel": "Global Explanation を追加",
+                "createOrEditLabel": "Global Explanationを追加または編集"
+            },
+            "created": "A new Global Explanation is created with identifier {{ param }}",
+            "updated": "A Global Explanation is updated with identifier {{ param }}",
+            "deleted": "A Global Explanation is deleted with identifier {{ param }}",
+            "delete": {
+                "question": "Global Explanation {{ id }}を削除してもよろしいですか？"
+            },
+            "detail": {
+                "title": "Global Explanation"
+            },
+            "name": "Name"
+        }
+    }
+}
