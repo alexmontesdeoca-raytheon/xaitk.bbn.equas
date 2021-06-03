@@ -63,7 +63,13 @@ This readme describes the requirements and steps for running the EQUAS infrastru
   # Test nvidia-smi with the latest official CUDA image
   docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
   ```
-
+  7. Download the required model files, unzip them and place them in the proper application folder (evaluation_datasets)
+  ```
+  sudo curl -L https://data.kitware.com/api/v1/item/60a3ff992fa25629b9558504/download?contentDisposition=inline -o /usr/local/evaluation_dataset
+  sudo chmod +x /usr/local/evaluation_dataset
+  sudo apt install unzip
+  sudo unzip '/usr/local/evaluation_dataset/EQUAS Resources.zip' -d /<application_root>/evaluation_dataset
+  ```
 
 ## Launch EQUAS
   1. Extract the EQUAS distribution package to the location of your choice and navigate to the docker-compose directory.
@@ -97,7 +103,8 @@ This readme describes the requirements and steps for running the EQUAS infrastru
   7. Click **sign in** on the home page and login with **user/user** or **admin/admin**
   8. At this point your should see the EQUAS interface and can begin interacting with the VQA system.  
   ![alt text](./EQUAS.png "EQUAS UI")
-  9. To stop the Docker containers run the following.
+  9. The EQUAS Interface exposes several modalities, to run the one shot detector modality navigate to http://localhost:8187/#/oneshotdemo?modality=component
+  10. To stop the Docker containers run the following.
   ````
   sh stop_EQUAS_Docker.sh
   sh stop_MODELS_Docker.sh
